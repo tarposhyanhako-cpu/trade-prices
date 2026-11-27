@@ -229,7 +229,8 @@ const pname=c=>{const p=PART.get(c);return p?(L==='hy'?p.hy:p.en):String(c)};
 const prodName=p=>L==='hy'&&p.hy?p.hy:p.en;
 
 /* ---------- load ---------- */
-Promise.all([fetch('data/products.json').then(r=>r.json()),fetch('data/partners.json').then(r=>r.json()),fetch('vendor/countries-50m.json').then(r=>r.json())])
+const NOCACHE='?t='+Math.floor(Date.now()/36e5);
+Promise.all([fetch('data/products.json'+NOCACHE).then(r=>r.json()),fetch('data/partners.json'+NOCACHE).then(r=>r.json()),fetch('vendor/countries-50m.json').then(r=>r.json())])
 .then(([pj,parts,world])=>{
   P=pj.products.map(a=>({hs:a[0],en:a[1],hy:a[2],f:a[3],v:a[4]}));META=pj.meta;
   parts.forEach(p=>PART.set(p.c,p));
@@ -279,7 +280,7 @@ $('fM').onclick=()=>{flow='M';excluded.clear();render(true)};
 
 function load(hs){
   $('list').style.display='none';
-  fetch(`data/p/${hs}.json`).then(r=>r.json()).then(r=>{rec=r;excluded.clear();showAll=false;
+  fetch(`data/p/${hs}.json?v=${META.built}`).then(r=>r.json()).then(r=>{rec=r;excluded.clear();showAll=false;
     if(!rec.f[flow])flow=rec.f.X?'X':'M';$('q').value=`${rec.hs} · ${prodName(rec)}`;$('q').blur();render(true)});
 }
 
