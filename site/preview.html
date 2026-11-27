@@ -33,6 +33,82 @@
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:Inter,"Noto Sans Armenian",-apple-system,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.45}
 button,input,select{font:inherit;color:inherit}
 
+/* ---------- compare with other countries ---------- */
+const REGION=new Set([268,31,792,364,398,860,417,112,498,804]);
+function renderCmp(fit){
+  const box=$('cmp');
+  if(!CMP||!CMP.f||!CMP.f[flow]){box.innerHTML=`<div class="cmphead" style="margin-top:14px">${t('cmploading')}</div>`;clearCmpMap();return}
+  const rows=CMP.f[flow], years=CMP.years;
+  if(!cyear||!years.includes(cyear))cyear=years[years.length-1];
+  const dests=[...new Set(rows.map(r=>r[2]))];
+  const dv=new Map();rows.forEach(r=>{if(r[1]===51&&r[0]===cyear)dv.set(r[2],(dv.get(r[2])||0)+r[3])});
+  const dlist=[0,...dests.filter(d=>d!==0).sort((a,b)=>(dv.get(b)||0)-(dv.get(a)||0))];
+  if(!dlist.includes(dest))dest=0;
+  const by=new Map();
+  rows.forEach(r=>{if(r[0]!==cyear||r[2]!==dest||r[1]===dest)return;let a=by.get(r[1]);if(!a){a={c:r[1],v:0,kg:0};by.set(r[1],a)}a.v+=r[3];a.kg+=r[4]});
+  let list=[...by.values()].filter(a=>a.kg>0&&a.v>0).map(a=>({...a,p:a.v/a.kg}));
+  const totv=d3.sum(list,a=>a.v)||1;
+  list=list.filter(a=>a.c===51||REGION.has(a.c)||a.v/totv>=0.002);
+  const arm=list.find(a=>a.c===51);
+  const others=list.filter(a=>a.c!==51);const avgO=d3.sum(others,a=>a.v)/(d3.sum(others,a=>a.kg)||1);
+  const byP=[...list].sort((a,b)=>b.p-a.p);const rank=arm?byP.findIndex(a=>a.c===51)+1:0;
+  const top=[...list].sort((a,b)=>b.v-a.v);
+  let show=top.slice(0,12);list.forEach(a=>{if((REGION.has(a.c)||a.c===51)&&!show.includes(a))show.push(a)});
+  show.sort(csort==='p'?(a,b)=>b.p-a.p:(a,b)=>b.v-a.v);
+  const maxp=d3.max(show,a=>a.p)||1;
+  const dname=c=>c===0?t('world'):pname(c);
+  box.innerHTML=`<div class="cmpctl"><div><label>${t('dest_'+flow)}</label><select id="cdest">${dlist.map(d=>`<option value="${d}" ${d===dest?'selected':''}>${dname(d)}</option>`).join('')}</select></div>
+     <div><label>${t('year')}</label><select id="cyear">${years.slice().reverse().map(y=>`<option ${y===cyear?'selected':''}>${y}</option>`).join('')}</select></div></div>
+   <div class="cmphead"><b>${rec.hs}</b> · ${prodName(rec)} · ${dname(dest)} · ${cyear}</div>
+   <div class="cmpbig"><div><div class="o" style="margin-bottom:4px">${t('armprice_'+flow)}</div><div class="v">${arm?fmtP(arm.p):'–'}<small>${t('perkg')}</small></div></div>
+     <div class="o"><b>${fmtP(avgO)}</b>${t('others')}</div></div>
+   <div class="o" style="font-size:12.5px;color:var(--soft)">${t('rankof')(rank,list.length)}</div>
+   <div class="rank"><div class="hdr"><span>${t('country')}</span><span>${t('sortby')}: <button class="sortlnk" id="csort">${csort==='p'?t('byprice'):t('byvalue')}</button></span><span>${t('perkg')}</span><span>${t('value')}</span></div>
+     ${show.map(a=>`<div class="r ${a.c===51?'arm':''} ${REGION.has(a.c)?'reg':''}" data-c="${a.c}"><span class="nm">${pname(a.c)}</span><span><span class="b" style="display:block;width:${(100*a.p/maxp).toFixed(1)}%"></span></span><span class="p">${fmtP(a.p)}</span><span class="val">${t('vfmt')(a.v)}</span></div>`).join('')}
+     ${arm?'':`<div class="r arm"><span class="nm">${t('noarm')}</span></div>`}</div>
+   <div class="note" style="margin-top:8px">${flow==='X'?t('regnote'):t('regnoteM')}<br>${t('cmpsrc')(cyear)}</div>`;
+  $('cdest').onchange=e=>{dest=+e.target.value;render(true)};$('cyear').onchange=e=>{cyear=+e.target.value;render()};
+  $('csort').onclick=()=>{csort=csort==='p'?'v':'p';render()};
+  box.querySelectorAll('.r[data-c]').forEach(el=>{el.onmouseenter=()=>hiRep(+el.dataset.c,true);el.onmouseleave=()=>hiRep(+el.dataset.c,false)});
+  drawCmpMap(list,dest,fit);
+}
+function clearCmpMap(){gArcs.selectAll('*').remove();gDots.selectAll('.dot').remove();gLand.selectAll('path').classed('has',false).classed('off',false).classed('dest',false).style('fill',null).each(d=>{d.__a=null;d.__r=null})}
+function hiRep(c,on){gArcs.selectAll('path.arc').filter(a=>a.c===c).classed('hi',on)}
+function drawCmpMap(list,dest,fit){
+  const dp=dest===0?null:PART.get(dest);
+  const prices=list.map(a=>a.p).sort((x,y)=>x-y);
+  const lo=prices.length?d3.quantile(prices,.05):1, hi_=prices.length?d3.quantile(prices,.95):2;
+  const ramp=d3.scaleSequentialLog(d3.interpolateRgb(css('--ramp0'),css('--ramp1'))).domain([Math.max(lo,1e-6),Math.max(hi_,lo*1.01)]).clamp(true);
+  const byNum=new Map();list.forEach(a=>{const p=PART.get(a.c);if(p&&p.n)byNum.set(p.n,a)});
+  gLand.selectAll('path').each(function(d){const a=byNum.get(d.id);d.__a=null;d.__r=a||null;const s=d3.select(this);
+    const isDest=dp&&dp.n===d.id;s.classed('has',!!a).classed('off',false).classed('dest',!!isDest).classed('arm',d.id==='051');
+    s.style('fill',d.id==='051'||isDest?null:(a?ramp(a.p):null))});
+  gLand.selectAll('path').on('mousemove',(e,d)=>{if(d.__r)showCmpTip(e,d.__r);else if(d.__a)showTip(e,d.__a);else hideTip()});
+  const maxv=d3.max(list,a=>a.v)||1, w=d3.scaleSqrt().domain([0,maxv]).range([.8,10]), rr=d3.scaleSqrt().domain([0,maxv]).range([2,9]);
+  const pts=list.map(a=>{const p=PART.get(a.c);return p&&p.lat!=null?{a,xy:proj([p.lon,p.lat])}:null}).filter(Boolean);
+  const arcs=dp?pts:[];const [dx0,dy0]=dp?proj([dp.lon,dp.lat]):[0,0];
+  const arcD=o=>{const [x,y]=o.xy;const dx=dx0-x,dy=dy0-y,dist=Math.hypot(dx,dy)||1;const bend=Math.min(.32,.18+40/dist);return `M${x},${y}Q${(x+dx0)/2-dy*bend},${(y+dy0)/2+dx*bend} ${dx0},${dy0}`};
+  gArcs.selectAll('path.arc').data(arcs.map(o=>({...o,c:o.a.c})),d=>d.c).join('path').attr('class','arc').attr('d',arcD).style('stroke-width',o=>w(o.a.v)+'px')
+    .style('stroke',o=>o.a.c===51?css('--accent'):null).style('stroke-opacity',o=>o.a.c===51?1:null)
+    .on('mousemove',(e,o)=>{showCmpTip(e,o.a);d3.select(e.currentTarget).classed('hi',true)}).on('mouseleave',e=>{hideTip();d3.select(e.currentTarget).classed('hi',false)}).on('click',null);
+  gArcs.selectAll('path.flow').data(arcs.map(o=>({...o,c:o.a.c})),d=>d.c).join('path').attr('class','flow').attr('d',arcD).style('stroke-width',o=>Math.max(1.2,w(o.a.v)*.45)+'px');
+  gDots.selectAll('circle.dot').data(pts.map(o=>({x:o.xy[0],y:o.xy[1],r:rr(o.a.v)}))).join('circle').attr('class','dot').attr('cx',d=>d.x).attr('cy',d=>d.y);
+  gDots.select('.homepulse').raise();gDots.select('.home').raise();scaleDots();
+  $('legend').innerHTML=`<div><div>${t('price')}</div><div class="ramp" style="background:linear-gradient(90deg,${css('--ramp0')},${css('--ramp1')})"></div><div class="ends"><span>${fmtP(lo)}</span><span>${fmtP(hi_)}</span></div></div>`;
+  $('empty').style.display='none';
+  if(fit){const P2=[...pts.sort((a,b)=>b.a.v-a.a.v).slice(0,10).map(o=>o.xy),proj(YEREVAN)];if(dp)P2.push([dx0,dy0]);fitPts(P2)}
+}
+function showCmpTip(e,a){
+  const tip=$('tip');tip.innerHTML=`<h4>${pname(a.c)}</h4><div class="tp">${fmtP(a.p)} <small>${t('perkg')}</small></div><table><tr><td>${t('value')}</td><td>${t('vfmt')(a.v)}</td></tr><tr><td>${t('qty')}</td><td>${t('vfmt')(a.kg)}</td></tr></table>`;
+  let x=e.clientX+16,y=e.clientY+16;if(x+240>innerWidth)x-=260;if(y+160>innerHeight)y-=170;tip.style.left=x+'px';tip.style.top=y+'px';tip.style.opacity=1;
+}
+function fitPts(pts){
+  const [x0,y0,x1,y1]=[d3.min(pts,p=>p[0]),d3.min(pts,p=>p[1]),d3.max(pts,p=>p[0]),d3.max(pts,p=>p[1])];
+  const left=innerWidth>900?480:20, right=60, top=40, bottom=90, aw=W-left-right, ah=H-top-bottom;
+  let k=Math.min(aw/Math.max(x1-x0,80),ah/Math.max(y1-y0,60))*.85;k=Math.max(1,Math.min(k,12));
+  svg.transition().duration(900).call(zoom.transform,d3.zoomIdentity.translate(left+aw/2-k*(x0+x1)/2,top+ah/2-k*(y0+y1)/2).scale(k));
+}
+
 /* ---------- map ---------- */
 #map{position:fixed;inset:0;width:100vw;height:100vh;display:block;cursor:grab}
 #map:active{cursor:grabbing}
@@ -83,6 +159,30 @@ button,input,select{font:inherit;color:inherit}
 .facts div{font-size:11.5px;color:var(--soft)}
 .facts b{display:block;font-size:17px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
 .actions{display:flex;gap:8px;margin-top:16px}
+.mode{display:flex;gap:18px;border-bottom:1px solid var(--line);margin:-2px 0 14px}
+.mode button{border:0;background:none;padding:0 0 9px;cursor:pointer;font-size:14px;font-weight:600;color:var(--soft);border-bottom:2px solid transparent;margin-bottom:-1px}
+.mode button.on{color:var(--text);border-color:var(--accent)}
+.cmpctl{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:10px}
+.cmpctl label{font-size:11.5px;color:var(--soft);display:block;margin-bottom:3px}
+.cmphead{margin-top:16px;font-size:13px;color:var(--soft)}
+.cmphead b{color:var(--text)}
+.cmpbig{display:flex;gap:22px;align-items:flex-end;margin:6px 0 4px}
+.cmpbig .v{font-size:40px;font-weight:700;color:var(--accent);line-height:1;font-variant-numeric:tabular-nums}
+.cmpbig .v small{font-size:14px;color:var(--text);font-weight:600;margin-left:6px}
+.cmpbig .o{font-size:13px;color:var(--soft)}.cmpbig .o b{display:block;font-size:20px;color:var(--text);font-variant-numeric:tabular-nums}
+.rank{margin-top:12px}
+.rank .r{display:grid;grid-template-columns:118px 1fr 52px 60px;gap:8px;align-items:center;font-size:12.5px;padding:3px 0;cursor:default}
+.rank .r .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank .r .b{height:9px;border-radius:5px;background:var(--soft);opacity:.45}
+.rank .r.arm .b{background:var(--accent);opacity:1}.rank .r.arm .nm,.rank .r.arm .p{color:var(--accent);font-weight:700}
+.rank .r .p{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.rank .r .val{text-align:right;color:var(--soft);font-variant-numeric:tabular-nums}
+.rank .r.reg .nm:after{content:" ●";color:var(--accent2);font-size:9px;vertical-align:2px}
+.rank .hdr{font-size:11px;color:var(--soft);display:grid;grid-template-columns:118px 1fr 52px 60px;gap:8px;border-bottom:1px solid var(--line);padding-bottom:4px;margin-bottom:3px}
+.rank .hdr span:nth-child(3),.rank .hdr span:nth-child(4){text-align:right}
+.sortlnk{border:0;background:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600;padding:0}
+.country.rep{cursor:pointer}
+.country.dest{fill:var(--accent2)!important}
 .btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--panel-solid);border-radius:10px;height:38px;cursor:pointer;font-size:13px;font-weight:600}
 .btn:hover{border-color:var(--text)}
 .btn.on{background:var(--text);color:var(--bg);border-color:var(--text)}
@@ -163,6 +263,7 @@ table.ct{width:100%;border-collapse:collapse;font-size:13px}
 
 <div class="card panel">
   <div class="brand"><span class="mark"><i></i></span><span data-t="brand"></span></div>
+  <div class="mode"><button id="mP" class="on" data-t="m_price"></button><button id="mC" data-t="m_cmp"></button></div>
   <div class="q">
     <svg width="18" height="18" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="6.5" fill="none" stroke-width="2"/><path d="M13.5 13.5 L18 18" stroke-width="2" stroke-linecap="round"/></svg>
     <input id="q" autocomplete="off">
@@ -170,7 +271,8 @@ table.ct{width:100%;border-collapse:collapse;font-size:13px}
   </div>
   <div class="seg"><button id="fX" data-t="export"></button><button id="fM" data-t="import"></button></div>
   <div id="answer"></div>
-  <div class="actions">
+  <div id="cmp" style="display:none"></div>
+  <div class="actions" id="actions">
     <button class="btn" id="tsbtn"><span data-t="tsbtn"></span></button>
     <button class="btn" id="fbtn"><span data-t="filters"></span><span class="badge" id="fbadge" style="display:none"></span></button>
   </div>
@@ -219,7 +321,7 @@ table.ct{width:100%;border-collapse:collapse;font-size:13px}
 <script>
 const T={
  hy:{brand:"Արտահանման և ներմուծման գներ · Հայաստան",ph:"Ապրանք կամ ԱՏԳ ԱԱ ծածկագիր (օր. 070200)",export:"Արտահանում",import:"Ներմուծում",
-  tsbtn:"Արժեք և ծավալ",yearly:"Տարեկան",monthly:"Ամսական",tsval:"Արժեք, ԱՄՆ դոլար",tsvol:"Ծավալ, կգ",tstitle:"Վերջին 5 տարին",
+  tsbtn:"Արժեք և ծավալ",m_price:"Գին",m_cmp:"Համեմատել այլ երկրների հետ",dest_X:"Նշանակման երկիր",dest_M:"Ծագման երկիր",world:"Ամբողջ աշխարհ",year:"Տարի",armprice_X:"Հայաստանի արտահանման գինը",armprice_M:"Հայաստանի ներմուծման գինը",others:"Այլ երկրների միջինը",rankof:(r,n)=>r?`Հայաստանը ${r}-րդն է ${n} երկրից (ըստ գնի)`:"Հայաստանը այս ուղղությամբ առևտուր չունի",noarm:"Հայաստան՝ առևտուր չկա",cmploading:"Համեմատության տվյալները դեռ ներբեռնվում են (ամեն օր ավելանում են)։",byvalue:"ըստ արժեքի",byprice:"ըստ գնի",sortby:"Դասավորել",regnote:"● տարածաշրջան · ցուցադրված են խոշորագույն արտահանողները և տարածաշրջանը",regnoteM:"● տարածաշրջան · ցուցադրված են խոշորագույն ներմուծողները և տարածաշրջանը",cmpsrc:y=>`ՄԱԿ Comtrade, տարեկան տվյալներ, ${y}։ Գին = արժեք ÷ քաշ։`,yearly:"Տարեկան",monthly:"Ամսական",tsval:"Արժեք, ԱՄՆ դոլար",tsvol:"Ծավալ, կգ",tstitle:"Վերջին 5 տարին",
   tsnote:"Գունավոր՝ գնի համար ընտրված ժամանակահատվածը։ * Տարին դեռ ամբողջական չէ։ Կիրառվում են նույն ֆիլտրերը։",partial:"մաս",
   avg_X:"Միջին արտահանման գին",avg_M:"Միջին ներմուծման գին",perkg:"$/կգ",perunit:u=>`$/${u}`,
   value:"Արժեք, $",qty:"Քանակ, կգ",ncountries:"Երկրներ",months:"Ամիսներ",
@@ -236,7 +338,7 @@ const T={
   vfmt:x=>x>=1e9?(x/1e9).toLocaleString('hy-AM',{maximumFractionDigits:2})+" մլրդ":x>=1e6?(x/1e6).toLocaleString('hy-AM',{maximumFractionDigits:1})+" մլն":x>=1e3?(x/1e3).toLocaleString('hy-AM',{maximumFractionDigits:0})+" հազ.":String(Math.round(x)),
   loc:"hy-AM",units:{l:"լ",u:"հատ","2u":"զույգ",m:"մ",m2:"մ²",m3:"մ³","m²":"մ²","m³":"մ³",carat:"կարատ",kWh:"կՎտժ","1000u":"1000 հատ","12u":"դյուժին",g:"գ"}},
  en:{brand:"Export and import prices · Armenia",ph:"Product or HS code (e.g. 070200 or tomatoes)",export:"Export",import:"Import",
-  tsbtn:"Value and volume",yearly:"Yearly",monthly:"Monthly",tsval:"Value, USD",tsvol:"Volume, kg",tstitle:"Last 5 years",
+  tsbtn:"Value and volume",m_price:"Price",m_cmp:"Compare with other countries",dest_X:"Destination",dest_M:"Origin",world:"Whole world",year:"Year",armprice_X:"Armenia\u2019s export price",armprice_M:"Armenia\u2019s import price",others:"Average of others",rankof:(r,n)=>r?`Armenia ranks ${r} of ${n} by price`:"Armenia has no trade on this route",noarm:"Armenia: no trade",cmploading:"Comparison data is still downloading (more is added every day).",byvalue:"by value",byprice:"by price",sortby:"Sort",regnote:"● region · showing the largest exporters and the region",regnoteM:"● region · showing the largest importers and the region",cmpsrc:y=>`UN Comtrade, yearly data, ${y}. Price = value ÷ weight.`,yearly:"Yearly",monthly:"Monthly",tsval:"Value, USD",tsvol:"Volume, kg",tstitle:"Last 5 years",
   tsnote:"Coloured: the period chosen for the price. * Year not complete yet. The same filters apply.",partial:"part",
   avg_X:"Average export price",avg_M:"Average import price",perkg:"$/kg",perunit:u=>`$/${u}`,
   value:"Value, $",qty:"Quantity, kg",ncountries:"Countries",months:"Months",
@@ -320,10 +422,11 @@ $('fM').onclick=()=>{flow='M';excluded.clear();render(true)};
 
 function load(hs){
   $('list').style.display='none';
+  CMP=null;fetch(`data/c/${hs}.json?v=${META.built}`).then(r=>r.ok?r.json():null).catch(()=>null).then(c=>{CMP=c;if(mode==='cmp'&&rec&&rec.hs===hs)render(true)});
   fetch(`data/p/${hs}.json?v=${META.built}`).then(r=>r.json()).then(r=>{rec=r;excluded.clear();showAll=false;
     if(!rec.f[flow])flow=rec.f.X?'X':'M';$('q').value=`${rec.hs} · ${prodName(rec)}`;$('q').blur();render(true);
     const sp=new URLSearchParams(location.search);
-    if(!tsOpen&&sp.get('ts')==='1')openTS(true);if(!drOpen&&sp.get('filters')==='1')openDrawer(true)});
+    if(sp.get('mode')==='cmp'&&mode!=='cmp')setMode('cmp');if(!tsOpen&&sp.get('ts')==='1')openTS(true);if(!drOpen&&sp.get('filters')==='1')openDrawer(true)});
 }
 
 /* ---------- calculation ---------- */
@@ -350,8 +453,14 @@ function compute(){
 
 /* ---------- render ---------- */
 let R=null;
+let mode='price',CMP=null,dest=0,cyear=null,csort='v';
+$('mP').onclick=()=>setMode('price');$('mC').onclick=()=>setMode('cmp');
+function setMode(m){mode=m;$('mP').classList.toggle('on',m==='price');$('mC').classList.toggle('on',m==='cmp');
+  $('answer').style.display=m==='price'?'block':'none';$('cmp').style.display=m==='cmp'?'block':'none';$('actions').style.display=m==='price'?'flex':'none';
+  if(m==='cmp'){openTS(false);openDrawer(false)}render(true)}
 function render(fit){
   if(!rec)return;
+  if(mode==='cmp'){$('fX').disabled=!rec.f.X;$('fM').disabled=!rec.f.M;$('fX').classList.toggle('on',flow==='X');$('fM').classList.toggle('on',flow==='M');renderCmp(fit);return}
   $('fX').disabled=!rec.f.X;$('fM').disabled=!rec.f.M;$('fX').classList.toggle('on',flow==='X');$('fM').classList.toggle('on',flow==='M');
   history.replaceState(null,'',location.pathname+location.search+`#${rec.hs}/${flow}/${from}-${to}`);
   syncFilters();
@@ -442,6 +551,82 @@ function bars(sel,bins,key){
     .append('title').text(b=>`${b.lab}: ${t('vfmt')(b[key])}`);
 }
 
+/* ---------- compare with other countries ---------- */
+const REGION=new Set([268,31,792,364,398,860,417,112,498,804]);
+function renderCmp(fit){
+  const box=$('cmp');
+  if(!CMP||!CMP.f||!CMP.f[flow]){box.innerHTML=`<div class="cmphead" style="margin-top:14px">${t('cmploading')}</div>`;clearCmpMap();return}
+  const rows=CMP.f[flow], years=CMP.years;
+  if(!cyear||!years.includes(cyear))cyear=years[years.length-1];
+  const dests=[...new Set(rows.map(r=>r[2]))];
+  const dv=new Map();rows.forEach(r=>{if(r[1]===51&&r[0]===cyear)dv.set(r[2],(dv.get(r[2])||0)+r[3])});
+  const dlist=[0,...dests.filter(d=>d!==0).sort((a,b)=>(dv.get(b)||0)-(dv.get(a)||0))];
+  if(!dlist.includes(dest))dest=0;
+  const by=new Map();
+  rows.forEach(r=>{if(r[0]!==cyear||r[2]!==dest||r[1]===dest)return;let a=by.get(r[1]);if(!a){a={c:r[1],v:0,kg:0};by.set(r[1],a)}a.v+=r[3];a.kg+=r[4]});
+  let list=[...by.values()].filter(a=>a.kg>0&&a.v>0).map(a=>({...a,p:a.v/a.kg}));
+  const totv=d3.sum(list,a=>a.v)||1;
+  list=list.filter(a=>a.c===51||REGION.has(a.c)||a.v/totv>=0.002);
+  const arm=list.find(a=>a.c===51);
+  const others=list.filter(a=>a.c!==51);const avgO=d3.sum(others,a=>a.v)/(d3.sum(others,a=>a.kg)||1);
+  const byP=[...list].sort((a,b)=>b.p-a.p);const rank=arm?byP.findIndex(a=>a.c===51)+1:0;
+  const top=[...list].sort((a,b)=>b.v-a.v);
+  let show=top.slice(0,12);list.forEach(a=>{if((REGION.has(a.c)||a.c===51)&&!show.includes(a))show.push(a)});
+  show.sort(csort==='p'?(a,b)=>b.p-a.p:(a,b)=>b.v-a.v);
+  const maxp=d3.max(show,a=>a.p)||1;
+  const dname=c=>c===0?t('world'):pname(c);
+  box.innerHTML=`<div class="cmpctl"><div><label>${t('dest_'+flow)}</label><select id="cdest">${dlist.map(d=>`<option value="${d}" ${d===dest?'selected':''}>${dname(d)}</option>`).join('')}</select></div>
+     <div><label>${t('year')}</label><select id="cyear">${years.slice().reverse().map(y=>`<option ${y===cyear?'selected':''}>${y}</option>`).join('')}</select></div></div>
+   <div class="cmphead"><b>${rec.hs}</b> · ${prodName(rec)} · ${dname(dest)} · ${cyear}</div>
+   <div class="cmpbig"><div><div class="o" style="margin-bottom:4px">${t('armprice_'+flow)}</div><div class="v">${arm?fmtP(arm.p):'–'}<small>${t('perkg')}</small></div></div>
+     <div class="o"><b>${fmtP(avgO)}</b>${t('others')}</div></div>
+   <div class="o" style="font-size:12.5px;color:var(--soft)">${t('rankof')(rank,list.length)}</div>
+   <div class="rank"><div class="hdr"><span>${t('country')}</span><span>${t('sortby')}: <button class="sortlnk" id="csort">${csort==='p'?t('byprice'):t('byvalue')}</button></span><span>${t('perkg')}</span><span>${t('value')}</span></div>
+     ${show.map(a=>`<div class="r ${a.c===51?'arm':''} ${REGION.has(a.c)?'reg':''}" data-c="${a.c}"><span class="nm">${pname(a.c)}</span><span><span class="b" style="display:block;width:${(100*a.p/maxp).toFixed(1)}%"></span></span><span class="p">${fmtP(a.p)}</span><span class="val">${t('vfmt')(a.v)}</span></div>`).join('')}
+     ${arm?'':`<div class="r arm"><span class="nm">${t('noarm')}</span></div>`}</div>
+   <div class="note" style="margin-top:8px">${flow==='X'?t('regnote'):t('regnoteM')}<br>${t('cmpsrc')(cyear)}</div>`;
+  $('cdest').onchange=e=>{dest=+e.target.value;render(true)};$('cyear').onchange=e=>{cyear=+e.target.value;render()};
+  $('csort').onclick=()=>{csort=csort==='p'?'v':'p';render()};
+  box.querySelectorAll('.r[data-c]').forEach(el=>{el.onmouseenter=()=>hiRep(+el.dataset.c,true);el.onmouseleave=()=>hiRep(+el.dataset.c,false)});
+  drawCmpMap(list,dest,fit);
+}
+function clearCmpMap(){gArcs.selectAll('*').remove();gDots.selectAll('.dot').remove();gLand.selectAll('path').classed('has',false).classed('off',false).classed('dest',false).style('fill',null).each(d=>{d.__a=null;d.__r=null})}
+function hiRep(c,on){gArcs.selectAll('path.arc').filter(a=>a.c===c).classed('hi',on)}
+function drawCmpMap(list,dest,fit){
+  const dp=dest===0?null:PART.get(dest);
+  const prices=list.map(a=>a.p).sort((x,y)=>x-y);
+  const lo=prices.length?d3.quantile(prices,.05):1, hi_=prices.length?d3.quantile(prices,.95):2;
+  const ramp=d3.scaleSequentialLog(d3.interpolateRgb(css('--ramp0'),css('--ramp1'))).domain([Math.max(lo,1e-6),Math.max(hi_,lo*1.01)]).clamp(true);
+  const byNum=new Map();list.forEach(a=>{const p=PART.get(a.c);if(p&&p.n)byNum.set(p.n,a)});
+  gLand.selectAll('path').each(function(d){const a=byNum.get(d.id);d.__a=null;d.__r=a||null;const s=d3.select(this);
+    const isDest=dp&&dp.n===d.id;s.classed('has',!!a).classed('off',false).classed('dest',!!isDest).classed('arm',d.id==='051');
+    s.style('fill',d.id==='051'||isDest?null:(a?ramp(a.p):null))});
+  gLand.selectAll('path').on('mousemove',(e,d)=>{if(d.__r)showCmpTip(e,d.__r);else if(d.__a)showTip(e,d.__a);else hideTip()});
+  const maxv=d3.max(list,a=>a.v)||1, w=d3.scaleSqrt().domain([0,maxv]).range([.8,10]), rr=d3.scaleSqrt().domain([0,maxv]).range([2,9]);
+  const pts=list.map(a=>{const p=PART.get(a.c);return p&&p.lat!=null?{a,xy:proj([p.lon,p.lat])}:null}).filter(Boolean);
+  const arcs=dp?pts:[];const [dx0,dy0]=dp?proj([dp.lon,dp.lat]):[0,0];
+  const arcD=o=>{const [x,y]=o.xy;const dx=dx0-x,dy=dy0-y,dist=Math.hypot(dx,dy)||1;const bend=Math.min(.32,.18+40/dist);return `M${x},${y}Q${(x+dx0)/2-dy*bend},${(y+dy0)/2+dx*bend} ${dx0},${dy0}`};
+  gArcs.selectAll('path.arc').data(arcs.map(o=>({...o,c:o.a.c})),d=>d.c).join('path').attr('class','arc').attr('d',arcD).style('stroke-width',o=>w(o.a.v)+'px')
+    .style('stroke',o=>o.a.c===51?css('--accent'):null).style('stroke-opacity',o=>o.a.c===51?1:null)
+    .on('mousemove',(e,o)=>{showCmpTip(e,o.a);d3.select(e.currentTarget).classed('hi',true)}).on('mouseleave',e=>{hideTip();d3.select(e.currentTarget).classed('hi',false)}).on('click',null);
+  gArcs.selectAll('path.flow').data(arcs.map(o=>({...o,c:o.a.c})),d=>d.c).join('path').attr('class','flow').attr('d',arcD).style('stroke-width',o=>Math.max(1.2,w(o.a.v)*.45)+'px');
+  gDots.selectAll('circle.dot').data(pts.map(o=>({x:o.xy[0],y:o.xy[1],r:rr(o.a.v)}))).join('circle').attr('class','dot').attr('cx',d=>d.x).attr('cy',d=>d.y);
+  gDots.select('.homepulse').raise();gDots.select('.home').raise();scaleDots();
+  $('legend').innerHTML=`<div><div>${t('price')}</div><div class="ramp" style="background:linear-gradient(90deg,${css('--ramp0')},${css('--ramp1')})"></div><div class="ends"><span>${fmtP(lo)}</span><span>${fmtP(hi_)}</span></div></div>`;
+  $('empty').style.display='none';
+  if(fit){const P2=[...pts.sort((a,b)=>b.a.v-a.a.v).slice(0,10).map(o=>o.xy),proj(YEREVAN)];if(dp)P2.push([dx0,dy0]);fitPts(P2)}
+}
+function showCmpTip(e,a){
+  const tip=$('tip');tip.innerHTML=`<h4>${pname(a.c)}</h4><div class="tp">${fmtP(a.p)} <small>${t('perkg')}</small></div><table><tr><td>${t('value')}</td><td>${t('vfmt')(a.v)}</td></tr><tr><td>${t('qty')}</td><td>${t('vfmt')(a.kg)}</td></tr></table>`;
+  let x=e.clientX+16,y=e.clientY+16;if(x+240>innerWidth)x-=260;if(y+160>innerHeight)y-=170;tip.style.left=x+'px';tip.style.top=y+'px';tip.style.opacity=1;
+}
+function fitPts(pts){
+  const [x0,y0,x1,y1]=[d3.min(pts,p=>p[0]),d3.min(pts,p=>p[1]),d3.max(pts,p=>p[0]),d3.max(pts,p=>p[1])];
+  const left=innerWidth>900?480:20, right=60, top=40, bottom=90, aw=W-left-right, ah=H-top-bottom;
+  let k=Math.min(aw/Math.max(x1-x0,80),ah/Math.max(y1-y0,60))*.85;k=Math.max(1,Math.min(k,12));
+  svg.transition().duration(900).call(zoom.transform,d3.zoomIdentity.translate(left+aw/2-k*(x0+x1)/2,top+ah/2-k*(y0+y1)/2).scale(k));
+}
+
 /* ---------- map ---------- */
 let svg,gRoot,gLand,gArcs,gDots,proj,path,zoom,W=1200,H=800,K=1;
 function initMap(){
@@ -464,6 +649,8 @@ function initMap(){
 function scaleDots(){gDots.selectAll('.dot').attr('r',d=>d.r/K);gDots.select('.home').attr('r',4.5/K);gDots.select('.homepulse').attr('r',10/K)}
 function drawMap(fit){
   const [hx,hy]=proj(YEREVAN);
+  gLand.selectAll('path').classed('dest',false).each(d=>{d.__r=null}).on('mousemove',(e,d)=>{const a=d.__a;if(a)showTip(e,a);else hideTip()});
+  gArcs.selectAll('path.arc').style('stroke',null).style('stroke-opacity',null);
   const parts=R.parts.filter(a=>PART.get(a.c)&&PART.get(a.c).lat!=null);
   const byNum=new Map();parts.forEach(a=>{const n=PART.get(a.c).n;if(n)byNum.set(n,a)});
   const prices=parts.filter(a=>!excluded.has(a.c)&&a.pkg).map(a=>a.pkg).sort((x,y)=>x-y);
