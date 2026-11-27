@@ -96,7 +96,11 @@ def main():
 
     desc = df.dropna(subset=["cmdDesc"]).groupby("cmdCode")["cmdDesc"].last()
     pname = df.dropna(subset=["partnerDesc"]).groupby("partnerCode")["partnerDesc"].last()
-    uq = df[df["okq"]].groupby(["cmdCode", "flowCode"])["qtyUnitAbbr"].agg(lambda x: x.value_counts().index[0])
+    # Unit of each product: the most common unit in the last 36 months (older years if none)
+    mode = lambda x: x.value_counts().index[0]
+    recent = df[df["okq"] & (df["period"] >= W["36m"][0])]
+    uq = df[df["okq"]].groupby(["cmdCode", "flowCode"])["qtyUnitAbbr"].agg(mode)
+    uq.update(recent.groupby(["cmdCode", "flowCode"])["qtyUnitAbbr"].agg(mode))
 
     R = {}
     def node(hs, fl):

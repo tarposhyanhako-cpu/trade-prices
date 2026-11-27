@@ -40,11 +40,6 @@ jobs:
           git pull --rebase && git push
       - name: Calculate average prices
         run: python scripts/build.py
-      - name: Save page data
-        run: |
-          git add site/data
-          git commit -m "Page data update $(date -u +%Y-%m-%d)" || echo "No changes"
-          git pull --rebase && git push
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
