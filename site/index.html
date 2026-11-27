@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Average export and import prices · Armenia</title>
+<style>
+:root{--navy:#051C2C;--blue:#2251FF;--line:#C9D3DE;--pale:#F3F6FA}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--navy);background:#fff;font-size:16px;line-height:1.45}
+.wrap{max-width:1100px;margin:0 auto;padding:32px 24px 60px}
+h1{font-family:Georgia,serif;font-weight:400;font-size:34px;margin:0 0 6px}
+h2{font-family:Georgia,serif;font-weight:400;font-size:22px;margin:0 0 10px}
+.sub{font-size:15px;margin-bottom:26px}
+.controls{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:end;margin-bottom:22px}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+.search{position:relative}
+input,select{font:inherit;color:var(--navy);border:1px solid var(--navy);border-radius:4px;padding:9px 11px;background:#fff;width:100%}
+.list{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--navy);border-top:none;max-height:360px;overflow:auto;z-index:5;display:none}
+.list div{padding:8px 11px;cursor:pointer;font-size:14px;border-bottom:1px solid var(--pale)}
+.list div:hover,.list div.on{background:var(--pale)}
+.list b{display:inline-block;width:64px}
+.toggle{display:inline-flex;border:1px solid var(--navy);border-radius:4px;overflow:hidden}
+.toggle button{font:inherit;border:0;background:#fff;color:var(--navy);padding:9px 18px;cursor:pointer}
+.toggle button.on{background:var(--navy);color:#fff;font-weight:700}
+.toggle button:disabled{cursor:not-allowed;text-decoration:line-through}
+.head{border-top:2px solid var(--navy);padding-top:16px;margin-bottom:26px}
+.prod{font-size:14px;margin-bottom:8px}
+.answer{font-size:22px;line-height:1.35}
+.answer b{color:var(--blue);font-weight:700}
+.small{font-size:14px;margin-top:6px}
+.grid{display:grid;grid-template-columns:1.2fr 1fr;gap:36px}
+.rule{border-top:1px solid var(--navy);padding-top:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;border-bottom:1px solid var(--navy);padding:6px 6px;font-weight:700}
+td{border-bottom:1px solid var(--line);padding:6px 6px}
+td.n,th.n{text-align:right;white-space:nowrap}
+tr.sel td{color:var(--blue);font-weight:700}
+.bar{display:grid;grid-template-columns:150px 1fr 90px;gap:10px;align-items:center;font-size:14px;margin:5px 0}
+.bar .t{height:16px;background:var(--navy)}
+.bar .v{text-align:right;white-space:nowrap}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.btn{display:inline-block;border:1px solid var(--navy);border-radius:4px;padding:8px 14px;color:var(--navy);text-decoration:none;font-size:14px}
+.btn.p{background:var(--navy);color:#fff}
+.note{font-size:14px;margin-top:36px;border-top:1px solid var(--line);padding-top:14px}
+.empty{font-size:15px;padding:20px 0}
+@media(max-width:760px){.controls,.grid{grid-template-columns:1fr}.bar{grid-template-columns:110px 1fr 80px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Average export and import prices, Armenia</h1>
+  <div class="sub" id="sub">Loading data…</div>
+
+  <div class="controls">
+    <div class="search">
+      <label for="q">Product (6-digit HS code or name)</label>
+      <input id="q" autocomplete="off" placeholder="For example 220820 or brandy">
+      <div class="list" id="list"></div>
+    </div>
+    <div>
+      <label>Flow</label>
+      <div class="toggle"><button id="bX" class="on">Export</button><button id="bM">Import</button></div>
+    </div>
+    <div>
+      <label for="per">Period</label>
+      <select id="per"></select>
+    </div>
+  </div>
+
+  <div id="out"></div>
+
+  <div class="note">
+    <b>How we calculate it.</b> Average price = total value ÷ total quantity over the chosen period, from monthly data that Armenia reports to UN Comtrade.
+    Price per kg uses net weight. Price per unit uses the product's own unit (litres, pieces and so on) when Comtrade gives one.
+    Rows with a unit value more than 10 times above or below the product's median are left out of the price, because they are usually recording errors.
+    <span id="built"></span>
+    <div class="btns"><a class="btn" href="data/armenia_trade_prices.xlsx">Download all (Excel)</a><a class="btn" href="data/armenia_trade_prices.csv">Download all (CSV)</a></div>
+  </div>
+</div>
+
+<script>
+const UNITS={l:'litre',u:'unit','2u':'pair',m:'metre',m2:'m²',m3:'m³',kg:'kg',g:'gram',carat:'carat','1000u':'1,000 units',kwh:'kWh'};
+let P=[],META=null,cur=null,flow='X',per='12m',hi=0;
+const $=id=>document.getElementById(id);
+const fmtP=x=>x==null?'–':(x>=100?x.toLocaleString('en',{maximumFractionDigits:0}):x>=1?x.toFixed(2):x.toPrecision(3));
+const fmtV=x=>x>=1e9?(x/1e9).toFixed(2)+' bn':x>=1e6?(x/1e6).toFixed(1)+' m':x>=1e3?(x/1e3).toFixed(0)+' k':String(Math.round(x));
+const ym=p=>new Date(+p.slice(0,4),+p.slice(4)-1,1).toLocaleString('en',{month:'long',year:'numeric'});
+
+fetch('data/products.json').then(r=>r.json()).then(js=>{
+  P=js.products;META=js.meta;
+  $('sub').textContent=`UN Comtrade monthly data, ${ym(META.first)} to ${ym(META.latest)} · ${META.n_products.toLocaleString('en')} products · Updated ${META.built}`;
+  $('per').innerHTML=META.windows.map(w=>`<option value="${w[0]}">${w[1]}</option>`).join('');
+  $('per').value='12m';
+  const h=decodeURIComponent(location.hash.slice(1)).split('/');
+  let start=P.find(p=>p[0]===h[0]);
+  if(h[1]==='M'||h[1]==='X')flow=h[1];
+  if(h[2]&&META.windows.some(w=>w[0]===h[2])){per=h[2];$('per').value=per}
+  if(!start)start=[...P].sort((a,b)=>(b[3].X||0)-(a[3].X||0))[0];
+  pick(start[0]);
+});
+
+function search(s){
+  s=s.trim().toLowerCase(); if(!s){$('list').style.display='none';return}
+  const words=s.split(/\s+/);
+  const res=P.filter(p=>p[0].startsWith(s)||words.every(w=>p[1].toLowerCase().includes(w))).slice(0,40);
+  hi=0;
+  $('list').innerHTML=res.length?res.map((p,i)=>`<div data-hs="${p[0]}" class="${i?'':'on'}"><b>${p[0]}</b>${p[1]}</div>`).join(''):'<div>No product found</div>';
+  $('list').style.display='block';
+}
+$('q').addEventListener('input',e=>search(e.target.value));
+$('q').addEventListener('keydown',e=>{
+  const items=[...$('list').querySelectorAll('[data-hs]')]; if(!items.length)return;
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();items[hi].classList.remove('on');hi=(hi+(e.key==='ArrowDown'?1:items.length-1))%items.length;items[hi].classList.add('on');items[hi].scrollIntoView({block:'nearest'})}
+  if(e.key==='Enter'){pick(items[hi].dataset.hs)}
+});
+$('list').addEventListener('click',e=>{const d=e.target.closest('[data-hs]');if(d)pick(d.dataset.hs)});
+document.addEventListener('click',e=>{if(!e.target.closest('.search'))$('list').style.display='none'});
+$('bX').onclick=()=>{flow='X';render()};
+$('bM').onclick=()=>{flow='M';render()};
+$('per').onchange=e=>{per=e.target.value;render()};
+
+function pick(hs){
+  $('list').style.display='none';
+  fetch(`data/p/${hs}.json`).then(r=>r.json()).then(rec=>{
+    cur=rec;$('q').value=`${rec.hs} · ${rec.d}`;
+    if(!rec.f[flow])flow=rec.f.X?'X':'M';
+    render();
+  });
+}
+
+function render(){
+  if(!cur)return;
+  $('bX').disabled=!cur.f.X;$('bM').disabled=!cur.f.M;
+  $('bX').classList.toggle('on',flow==='X');$('bM').classList.toggle('on',flow==='M');
+  location.hash=`${cur.hs}/${flow}/${per}`;
+  const F=cur.f[flow], w=F.w[per], wl=META.windows.find(x=>x[0]===per)[1];
+  const verb=flow==='X'?'export':'import', partnerWord=flow==='X'?'destination':'origin';
+  const unit=F.unit&&UNITS[F.unit]?UNITS[F.unit]:(F.unit||null);
+  const usePq=w&&w.pq!=null&&unit&&unit!=='kg';
+  if(!w){$('out').innerHTML=`<div class="head"><div class="prod">${cur.hs} · ${cur.d}</div><div class="empty">No ${verb}s of this product in this period. Choose another period.</div></div>`;return}
+  const main=usePq?`${fmtP(w.pq)} USD per ${unit}`:(w.pkg!=null?`${fmtP(w.pkg)} USD per kg`:'not available (no quantity reported)');
+  const second=usePq&&w.pkg!=null?` That is ${fmtP(w.pkg)} USD per kg.`:'';
+  const parts=(F.p[per]||[]);
+  const key=usePq?'pq':'pkg';
+  const withP=parts.filter(a=>a[key]!=null), mx=Math.max(...withP.map(a=>a[key]),0);
+  const bars=withP.map(a=>`<div class="bar"><div>${a.n}</div><div><div class="t" style="width:${(100*a[key]/mx).toFixed(1)}%"></div></div><div class="v">${fmtP(a[key])}</div></div>`).join('')||'<div class="empty">No partner has a usable quantity in this period.</div>';
+  const rows=META.windows.filter(x=>F.w[x[0]]).map(x=>{const a=F.w[x[0]];const p=usePq?a.pq:a.pkg;
+    return `<tr class="${x[0]===per?'sel':''}"><td>${x[1]}</td><td class="n">${fmtV(a.v)}</td><td class="n">${fmtV(usePq?a.q:a.kg)}</td><td class="n">${fmtP(p)}</td></tr>`}).join('');
+  $('out').innerHTML=`
+  <div class="head">
+    <div class="prod">HS ${cur.hs} · ${cur.d}</div>
+    <div class="answer">Armenia's average ${verb} price, ${wl.toLowerCase()}: <b>${main}</b></div>
+    <div class="small">${second} Based on ${fmtV(w.v)} USD of ${verb}s and ${w.m} month${w.m>1?'s':''} with trade.</div>
+  </div>
+  <div class="grid">
+    <div class="rule"><h2>Average price by ${partnerWord}</h2><div class="small" style="margin:0 0 10px">USD per ${usePq?unit:'kg'}, ${wl.toLowerCase()}, largest partners by value</div>${bars}</div>
+    <div class="rule"><h2>Average over different periods</h2>
+      <table><tr><th>Period</th><th class="n">Value, USD</th><th class="n">Quantity, ${usePq?unit+'s':'kg'}</th><th class="n">Price, USD</th></tr>${rows}</table>
+      <div class="btns"><a class="btn p" href="data/p/${cur.hs}.json" download>This product (JSON)</a></div>
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>
