@@ -108,5 +108,41 @@ def main():
     print(f"Built {len(products)} products, {first} to {latest}")
 
 
+REGION = [268, 31, 792, 364, 398, 860, 417, 112, 498, 804]   # Georgia, Azerbaijan, Türkiye, Iran, Kazakhstan, Uzbekistan, Kyrgyzstan, Belarus, Moldova, Ukraine
+TOP_REPORTERS = 25
+
+
+def build_compare():
+    """Yearly prices of all reporting countries, for the Compare view."""
+    files = sorted((ROOT / "data" / "compare").glob("*_*.parquet"))
+    out = OUT / "c"
+    if out.exists():
+        shutil.rmtree(out)
+    if not files:
+        return 0
+    out.mkdir(parents=True)
+    df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+    for c in ("primaryValue", "netWgt"):
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+    for c in ("reporterCode", "partnerCode"):
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(-1).astype(int)
+    df["year"] = df["period"].astype(str).str[:4].astype(int)
+    df = df[(df["primaryValue"] > 0) & (df["reporterCode"] > 0)]
+    df["cmdCode"] = df["cmdCode"].astype(str).str.zfill(6)
+    n = 0
+    for hs, g in df.groupby("cmdCode"):
+        rec = {"hs": hs, "years": sorted(int(y) for y in g["year"].unique()), "f": {}}
+        for fl, gf in g.groupby("flowCode"):
+            world = gf[gf["partnerCode"] == 0].groupby("reporterCode")["primaryValue"].sum()
+            keep = set(world.nlargest(TOP_REPORTERS).index) | set(REGION) | {51}
+            gf = gf[gf["reporterCode"].isin(keep)]
+            rec["f"][fl] = [[int(a), int(b), int(c), int(round(d)), int(round(e))] for a, b, c, d, e in
+                            gf[["year", "reporterCode", "partnerCode", "primaryValue", "netWgt"]].itertuples(index=False)]
+        (out / f"{hs}.json").write_text(json.dumps(rec, separators=(",", ":")))
+        n += 1
+    return n
+
+
 if __name__ == "__main__":
     main()
+    print("Compare files:", build_compare())
