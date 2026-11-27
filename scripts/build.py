@@ -1,14 +1,16 @@
-"""Turn the raw Comtrade files into average prices for the web page and downloads.
+"""Prepare the page data from the raw Comtrade files.
 
-Average price for a period = total value / total quantity over that period.
-Price per kg uses net weight. Price per unit uses the product's own unit (litres,
-pieces, ...) when Comtrade gives one.
+The page computes average prices itself (total value / total quantity), so it can
+apply the user's filters: period, countries, extreme prices, small shipments.
+For that, each product gets one small file with its monthly rows by partner.
 
-Rows with an extreme unit value (more than 10 times above or below the median for
-that product and flow) are left out of the price, because they are usually
-recording errors. They stay in the trade value.
+Outputs in site/data/:
+  products.json      list of products, names in English and Armenian, meta data
+  partners.json      partner countries: Armenian and English names, capital location
+  p/<hs6>.json       monthly rows: [month index, partner code, value USD, net kg, quantity]
+  armenia_trade_prices.xlsx / .csv   simple averages for the last 12 and 36 months
 """
-import json, re
+import json, re, shutil
 from datetime import date
 from pathlib import Path
 import numpy as np
@@ -16,9 +18,8 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
+REF = ROOT / "data" / "ref"
 OUT = ROOT / "site" / "data"
-TOP_PARTNERS = 15
-OUTLIER_FACTOR = 10.0
 FLOWS = {"X": "Export", "M": "Import"}
 
 
@@ -26,138 +27,85 @@ def load():
     df = pd.concat([pd.read_parquet(f) for f in sorted(RAW.glob("*.parquet"))], ignore_index=True)
     df["period"] = df["period"].astype(str)
     for c in ("primaryValue", "netWgt", "qty"):
-        df[c] = pd.to_numeric(df[c], errors="coerce")
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
     df["partnerCode"] = pd.to_numeric(df["partnerCode"], errors="coerce").fillna(-1).astype(int)
-    df = df[(df["partnerCode"] != 0) & df["flowCode"].isin(FLOWS) & (df["primaryValue"] > 0)]
+    df = df[(df["partnerCode"] > 0) & df["flowCode"].isin(FLOWS) & (df["primaryValue"] > 0)].copy()
     df["cmdCode"] = df["cmdCode"].astype(str).str.zfill(6)
     df["qtyUnitAbbr"] = df["qtyUnitAbbr"].fillna("N/A")
     return df
 
 
-def flag_outliers(df):
-    w = df["netWgt"] > 0
-    df["uv"] = np.where(w, df["primaryValue"] / df["netWgt"].where(w), np.nan)
-    med = df.groupby(["cmdCode", "flowCode"])["uv"].transform("median")
-    df["okw"] = w & (df["uv"] <= med * OUTLIER_FACTOR) & (df["uv"] >= med / OUTLIER_FACTOR)
-    uq = (df["qty"] > 0) & ~df["qtyUnitAbbr"].isin(["N/A", "kg"])
-    df["uvq"] = np.where(uq, df["primaryValue"] / df["qty"].where(uq), np.nan)
-    medq = df.groupby(["cmdCode", "flowCode"])["uvq"].transform("median")
-    df["okq"] = uq & (df["uvq"] <= medq * OUTLIER_FACTOR) & (df["uvq"] >= medq / OUTLIER_FACTOR)
-    return df
+def month_index(p, first):
+    return (int(p[:4]) - int(first[:4])) * 12 + int(p[4:]) - int(first[4:])
 
 
-def month_add(p, k):
-    y, m = int(p[:4]), int(p[4:])
-    t = y * 12 + (m - 1) + k
-    return f"{t // 12}{t % 12 + 1:02d}"
-
-
-def windows(latest, first):
-    w = {}
-    for n in (3, 12, 36):
-        w[f"{n}m"] = (month_add(latest, -(n - 1)), latest, f"Last {n} months")
-    for y in range(int(latest[:4]), int(first[:4]) - 1, -1):
-        lo, hi = f"{y}01", f"{y}12"
-        label = str(y) if hi <= latest else f"{y} (Jan to {date(2000, int(latest[4:]), 1):%b})"
-        w[str(y)] = (lo, min(hi, latest), label)
-    return w
-
-
-def short(s, n=110):
+def short(s, n=160):
     s = re.sub(r"\s+", " ", str(s or "")).strip()
     return s if len(s) <= n else s[: n - 1].rstrip() + "…"
 
 
-def sums(s, keys):
-    g = s.groupby(keys, sort=False)
-    out = g[["primaryValue", "vw", "kgw", "vq", "qq"]].sum()
-    out["m"] = g["period"].nunique()
-    out = out.reset_index()
-    out["pkg"] = np.where(out["kgw"] > 0, out["vw"] / out["kgw"].where(out["kgw"] > 0), np.nan)
-    out["pq"] = np.where(out["qq"] > 0, out["vq"] / out["qq"].where(out["qq"] > 0), np.nan)
-    return out
-
-
-def rec_of(r):
-    f = lambda x: None if pd.isna(x) else round(float(x), 4)
-    return {"v": round(float(r.primaryValue), 0), "kg": round(float(r.kgw), 0), "pkg": f(r.pkg),
-            "q": round(float(r.qq), 0), "pq": f(r.pq), "m": int(r.m)}
-
-
 def main():
-    df = flag_outliers(load())
-    df["vw"] = df["primaryValue"].where(df["okw"], 0.0)
-    df["kgw"] = df["netWgt"].where(df["okw"], 0.0)
-    df["vq"] = df["primaryValue"].where(df["okq"], 0.0)
-    df["qq"] = df["qty"].where(df["okq"], 0.0)
-    latest, first = df["period"].max(), df["period"].min()
-    W = windows(latest, first)
-    lab = {k: v[2] for k, v in W.items()}
+    df = load()
+    first, latest = df["period"].min(), df["period"].max()
+    months = sorted(df["period"].unique())
+    df["mi"] = df["period"].map(lambda p: month_index(p, first))
+    # quantity counts only when it is a real unit (litres, pieces...), not kg or missing
+    df["q"] = np.where(~df["qtyUnitAbbr"].isin(["N/A", "kg"]) & (df["qty"] > 0), df["qty"], 0)
 
+    hy = {}
+    if (REF / "hs6_hy.json").exists():
+        hy = json.loads((REF / "hs6_hy.json").read_text())
     desc = df.dropna(subset=["cmdDesc"]).groupby("cmdCode")["cmdDesc"].last()
-    pname = df.dropna(subset=["partnerDesc"]).groupby("partnerCode")["partnerDesc"].last()
-    # Unit of each product: the most common unit in the last 36 months (older years if none)
-    mode = lambda x: x.value_counts().index[0]
-    recent = df[df["okq"] & (df["period"] >= W["36m"][0])]
-    uq = df[df["okq"]].groupby(["cmdCode", "flowCode"])["qtyUnitAbbr"].agg(mode)
-    uq.update(recent.groupby(["cmdCode", "flowCode"])["qtyUnitAbbr"].agg(mode))
 
-    R = {}
-    def node(hs, fl):
-        r = R.setdefault(hs, {"hs": hs, "d": short(desc.get(hs, ""), 300), "f": {}})
-        return r["f"].setdefault(fl, {"unit": uq.get((hs, fl)), "w": {}, "p": {}})
+    if (OUT / "p").exists():
+        shutil.rmtree(OUT / "p")
+    (OUT / "p").mkdir(parents=True)
 
-    long_rows = []
-    for wk, (lo, hi, _) in W.items():
-        s = df[(df["period"] >= lo) & (df["period"] <= hi)]
-        if s.empty:
-            continue
-        for r in sums(s, ["cmdCode", "flowCode"]).itertuples(index=False):
-            a = rec_of(r)
-            node(r.cmdCode, r.flowCode)["w"][wk] = a
-            long_rows.append([r.cmdCode, desc.get(r.cmdCode, ""), FLOWS[r.flowCode], "All partners", wk, a, uq.get((r.cmdCode, r.flowCode))])
-        par = sums(s, ["cmdCode", "flowCode", "partnerCode"]).sort_values(
-            ["cmdCode", "flowCode", "primaryValue"], ascending=[True, True, False])
-        par["rank"] = par.groupby(["cmdCode", "flowCode"]).cumcount()
-        for r in par.itertuples(index=False):
-            a = rec_of(r); a["n"] = pname.get(r.partnerCode, str(r.partnerCode))
-            if r.rank < TOP_PARTNERS:
-                node(r.cmdCode, r.flowCode)["p"].setdefault(wk, []).append(a)
-            if wk in ("12m", "36m"):
-                long_rows.append([r.cmdCode, desc.get(r.cmdCode, ""), FLOWS[r.flowCode], a["n"], wk, a, uq.get((r.cmdCode, r.flowCode))])
-
-    (OUT / "p").mkdir(parents=True, exist_ok=True)
-    for old in (OUT / "p").glob("*.json"):
-        old.unlink()
+    last12 = month_index(latest, first) - 11
     products = []
-    for hs in sorted(R):
-        rec = R[hs]
+    for hs, g in df.groupby("cmdCode", sort=True):
+        rec = {"hs": hs, "en": short(desc.get(hs, ""), 400), "hy": hy.get(hs), "f": {}}
+        v12 = {}
+        for fl, gf in g.groupby("flowCode"):
+            units = gf.loc[gf["q"] > 0, "qtyUnitAbbr"]
+            unit = units.value_counts().index[0] if len(units) else None
+            gf = gf.sort_values(["mi", "partnerCode"])
+            rows = np.column_stack([gf["mi"].to_numpy(), gf["partnerCode"].to_numpy(),
+                                    gf["primaryValue"].round().to_numpy(), gf["netWgt"].round(1).to_numpy(),
+                                    np.where(gf["qtyUnitAbbr"] == unit, gf["q"], 0).round(1)])
+            num = lambda x: int(x) if float(x).is_integer() else float(x)
+            rec["f"][fl] = {"u": unit, "r": [[int(a), int(b), int(c), num(d), num(e)] for a, b, c, d, e in rows]}
+            v12[fl] = int(gf.loc[gf["mi"] >= last12, "primaryValue"].sum())
         (OUT / "p" / f"{hs}.json").write_text(json.dumps(rec, separators=(",", ":"), ensure_ascii=False))
-        products.append([hs, short(desc.get(hs, "")), sorted(rec["f"].keys()),
-                         {fl: rec["f"][fl]["w"].get("12m", {}).get("v", 0) for fl in rec["f"]}])
+        products.append([hs, short(desc.get(hs, "")), hy.get(hs), sorted(rec["f"]), v12])
 
-    meta = {"latest": latest, "first": first, "built": date.today().isoformat(),
-            "windows": [[k, v[2], v[0], v[1]] for k, v in W.items()],
-            "n_products": len(products), "outlier_factor": OUTLIER_FACTOR}
+    meta = {"first": first, "latest": latest, "months": months, "built": date.today().isoformat(),
+            "n_products": len(products), "names_hy": bool(hy)}
     (OUT / "products.json").write_text(json.dumps({"meta": meta, "products": products},
                                                   separators=(",", ":"), ensure_ascii=False))
+    shutil.copy(REF / "partners.json", OUT / "partners.json")
 
-    cols = ["HS6", "Product", "Flow", "Partner", "Period", "Value (USD)", "Net weight (kg)",
-            "Average price (USD per kg)", "Quantity", "Unit", "Average price (USD per unit)", "Months with trade"]
-    rows = [[hs, d, fl, pn, lab[wk], a["v"], a["kg"], a["pkg"], a["q"], u if a["pq"] else None, a["pq"], a["m"]]
-            for hs, d, fl, pn, wk, a, u in long_rows]
-    t = pd.DataFrame(rows, columns=cols)
-    t.to_csv(OUT / "armenia_trade_prices.csv", index=False)
+    # Simple download: average price over the last 12 and 36 months, all partners together
+    lab = {12: "Last 12 months", 36: "Last 36 months"}
+    rows = []
+    for n in (12, 36):
+        s = df[df["mi"] >= month_index(latest, first) - (n - 1)]
+        a = s.groupby(["cmdCode", "flowCode"]).agg(v=("primaryValue", "sum"), kg=("netWgt", "sum"), q=("q", "sum")).reset_index()
+        for r in a.itertuples(index=False):
+            rows.append([r.cmdCode, hy.get(r.cmdCode) or "", desc.get(r.cmdCode, ""), FLOWS[r.flowCode], lab[n],
+                         round(r.v), round(r.kg), round(r.v / r.kg, 4) if r.kg > 0 else None])
+    t = pd.DataFrame(rows, columns=["HS6", "Ապրանք", "Product", "Flow", "Period", "Value (USD)",
+                                    "Net weight (kg)", "Average price (USD per kg)"])
+    t.to_csv(OUT / "armenia_trade_prices.csv", index=False, encoding="utf-8-sig")
     with pd.ExcelWriter(OUT / "armenia_trade_prices.xlsx", engine="openpyxl") as xw:
         pd.DataFrame({"About": [
-            "Average export and import prices of Armenia, by 6-digit HS product and partner country.",
+            "Average export and import prices of Armenia by 6-digit HS product.",
             "Source: UN Comtrade, monthly data reported by Armenia.",
-            "Average price = total value / total quantity over the period.",
-            f"Rows with a unit value more than {OUTLIER_FACTOR:.0f} times above or below the product median are left out of the price.",
-            f"Data up to {latest[:4]}-{latest[4:]}. Built {meta['built']}."]}).to_excel(xw, sheet_name="About", index=False)
-        for wk in ("12m", "36m"):
-            t[t["Period"] == lab[wk]].to_excel(xw, sheet_name=lab[wk], index=False)
-    print(f"Built {len(products)} products, data {first} to {latest}, {len(t)} download rows")
+            "Average price = total value / total net weight over the period, all partner countries together, no filters.",
+            f"Data {first[:4]}-{first[4:]} to {latest[:4]}-{latest[4:]}. Built {meta['built']}."]}).to_excel(xw, sheet_name="About", index=False)
+        for n in (12, 36):
+            t[t["Period"] == lab[n]].to_excel(xw, sheet_name=lab[n], index=False)
+    print(f"Built {len(products)} products, {first} to {latest}")
 
 
 if __name__ == "__main__":

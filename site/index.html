@@ -1,166 +1,437 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hy">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Average export and import prices · Armenia</title>
+<title>Արտահանման և ներմուծման գներ · Հայաստան</title>
 <style>
-:root{--navy:#051C2C;--blue:#2251FF;--line:#C9D3DE;--pale:#F3F6FA}
+:root{--navy:#051C2C;--blue:#2251FF;--line:#C9D3DE;--pale:#F3F6FA;--land:#ECF0F5;--edge:#FFFFFF}
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--navy);background:#fff;font-size:16px;line-height:1.45}
-.wrap{max-width:1100px;margin:0 auto;padding:32px 24px 60px}
-h1{font-family:Georgia,serif;font-weight:400;font-size:34px;margin:0 0 6px}
-h2{font-family:Georgia,serif;font-weight:400;font-size:22px;margin:0 0 10px}
-.sub{font-size:15px;margin-bottom:26px}
-.controls{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:end;margin-bottom:22px}
-label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
-.search{position:relative}
-input,select{font:inherit;color:var(--navy);border:1px solid var(--navy);border-radius:4px;padding:9px 11px;background:#fff;width:100%}
-.list{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--navy);border-top:none;max-height:360px;overflow:auto;z-index:5;display:none}
-.list div{padding:8px 11px;cursor:pointer;font-size:14px;border-bottom:1px solid var(--pale)}
+html,body{margin:0;background:#fff;color:var(--navy);font-family:Arial,"Noto Sans Armenian",Helvetica,sans-serif;font-size:16px;line-height:1.45}
+button,input,select{font:inherit;color:inherit}
+.top{border-bottom:1px solid var(--line)}
+.top .in{max-width:1280px;margin:0 auto;padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+.brand{font-family:Georgia,"Noto Serif Armenian",serif;font-size:19px}
+.lang button{border:0;background:none;padding:4px 8px;cursor:pointer;font-size:14px;border-radius:4px}
+.lang button.on{background:var(--navy);color:#fff;font-weight:700}
+.wrap{max-width:1280px;margin:0 auto;padding:26px 24px 60px}
+
+/* search */
+.find{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
+.q{position:relative}
+.q input{width:100%;height:58px;border:1.5px solid var(--navy);border-radius:10px;padding:0 18px 0 50px;font-size:18px;outline:none;background:#fff}
+.q input:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(34,81,255,.12)}
+.q svg{position:absolute;left:17px;top:19px}
+.list{position:absolute;left:0;right:0;top:64px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(5,28,44,.12);max-height:420px;overflow:auto;z-index:30;display:none}
+.list div{padding:10px 16px;cursor:pointer;display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--pale)}
 .list div:hover,.list div.on{background:var(--pale)}
-.list b{display:inline-block;width:64px}
-.toggle{display:inline-flex;border:1px solid var(--navy);border-radius:4px;overflow:hidden}
-.toggle button{font:inherit;border:0;background:#fff;color:var(--navy);padding:9px 18px;cursor:pointer}
-.toggle button.on{background:var(--navy);color:#fff;font-weight:700}
-.toggle button:disabled{cursor:not-allowed;text-decoration:line-through}
-.head{border-top:2px solid var(--navy);padding-top:16px;margin-bottom:26px}
-.prod{font-size:14px;margin-bottom:8px}
-.answer{font-size:22px;line-height:1.35}
-.answer b{color:var(--blue);font-weight:700}
-.small{font-size:14px;margin-top:6px}
-.grid{display:grid;grid-template-columns:1.2fr 1fr;gap:36px}
-.rule{border-top:1px solid var(--navy);padding-top:12px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th{text-align:left;border-bottom:1px solid var(--navy);padding:6px 6px;font-weight:700}
-td{border-bottom:1px solid var(--line);padding:6px 6px}
-td.n,th.n{text-align:right;white-space:nowrap}
-tr.sel td{color:var(--blue);font-weight:700}
-.bar{display:grid;grid-template-columns:150px 1fr 90px;gap:10px;align-items:center;font-size:14px;margin:5px 0}
-.bar .t{height:16px;background:var(--navy)}
-.bar .v{text-align:right;white-space:nowrap}
-.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-.btn{display:inline-block;border:1px solid var(--navy);border-radius:4px;padding:8px 14px;color:var(--navy);text-decoration:none;font-size:14px}
-.btn.p{background:var(--navy);color:#fff}
-.note{font-size:14px;margin-top:36px;border-top:1px solid var(--line);padding-top:14px}
-.empty{font-size:15px;padding:20px 0}
-@media(max-width:760px){.controls,.grid{grid-template-columns:1fr}.bar{grid-template-columns:110px 1fr 80px}}
+.list b{font-variant-numeric:tabular-nums;min-width:62px}
+.list span{flex:1}
+.list em{font-style:normal;font-size:13px;white-space:nowrap}
+.seg{display:inline-flex;background:var(--pale);border-radius:10px;padding:4px;height:58px;align-items:center}
+.seg button{border:0;background:none;padding:0 22px;height:50px;border-radius:8px;cursor:pointer;font-size:16px}
+.seg button.on{background:var(--navy);color:#fff;font-weight:700}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
+
+/* answer */
+.answer{margin:26px 0 18px;display:flex;justify-content:space-between;gap:30px;align-items:flex-end;flex-wrap:wrap}
+.pname{font-size:15px;margin-bottom:6px}
+.pname b{font-variant-numeric:tabular-nums}
+.price{font-family:Georgia,"Noto Serif Armenian",serif;font-size:52px;line-height:1.05;color:var(--blue)}
+.price small{font-family:Arial,sans-serif;font-size:20px;color:var(--navy);margin-left:8px}
+.plabel{font-size:15px;margin-top:6px}
+.facts{display:flex;gap:28px;flex-wrap:wrap}
+.facts div{font-size:13px}
+.facts b{display:block;font-size:20px;font-weight:400;font-variant-numeric:tabular-nums}
+
+/* board */
+.board{display:grid;grid-template-columns:1fr 300px;gap:20px}
+.mapbox{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:linear-gradient(#FBFCFE,#F3F6FA);height:560px}
+#map{width:100%;height:100%;display:block;cursor:grab}
+#map:active{cursor:grabbing}
+.country{fill:var(--land);stroke:var(--edge);stroke-width:.6px;vector-effect:non-scaling-stroke}
+.country.has{cursor:pointer}
+.country.has:hover{stroke:var(--navy);stroke-width:1.2px}
+.country.arm{fill:var(--navy)}
+.country.off{fill:#F7F9FB;stroke:var(--line);stroke-dasharray:3 2}
+.arc{fill:none;stroke:var(--navy);stroke-opacity:.5;stroke-linecap:round;vector-effect:non-scaling-stroke;cursor:pointer;transition:stroke-opacity .2s}
+.arc:hover,.arc.hi{stroke:var(--blue);stroke-opacity:.95}
+.flow{fill:none;stroke:#fff;stroke-opacity:.9;stroke-linecap:round;vector-effect:non-scaling-stroke;stroke-dasharray:1 14;animation:flow 7s linear infinite;pointer-events:none}
+.flow.rev{animation-direction:reverse}
+@keyframes flow{to{stroke-dashoffset:-150}}
+.dot{fill:var(--blue);stroke:#fff;stroke-width:1.5px;vector-effect:non-scaling-stroke;pointer-events:none}
+.home{fill:#fff;stroke:var(--navy);stroke-width:3px;vector-effect:non-scaling-stroke}
+.homepulse{fill:none;stroke:var(--navy);stroke-width:1.5px;vector-effect:non-scaling-stroke;animation:pulse 2.6s ease-out infinite;pointer-events:none}
+@keyframes pulse{from{opacity:.7}to{opacity:0}}
+.zoom{position:absolute;right:14px;top:14px;display:flex;flex-direction:column;gap:6px}
+.zoom button{width:36px;height:36px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font-size:18px;line-height:1}
+.zoom button:hover{border-color:var(--navy)}
+.legend{position:absolute;left:14px;bottom:14px;background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;display:flex;gap:18px;align-items:flex-end}
+.legend .ramp{width:120px;height:9px;border-radius:5px;margin:4px 0 2px}
+.legend .ends{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+.legend svg{display:block;margin-top:4px}
+.hint{position:absolute;left:14px;top:14px;font-size:12px;background:rgba(255,255,255,.9);padding:5px 9px;border-radius:6px}
+.tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(5,28,44,.16);padding:12px 14px;font-size:13px;min-width:200px;opacity:0;transition:opacity .12s;z-index:20}
+.tip h4{margin:0 0 6px;font-size:15px}
+.tip .tp{font-family:Georgia,serif;font-size:26px;color:var(--blue);line-height:1.1}
+.tip .tp small{font-family:Arial,sans-serif;font-size:13px;color:var(--navy)}
+.tip table{border-collapse:collapse;margin-top:6px;width:100%}
+.tip td{padding:2px 0;font-variant-numeric:tabular-nums}
+.tip td+td{text-align:right;padding-left:14px}
+.tip .act{margin-top:7px;font-size:12px;color:var(--blue)}
+.empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:16px;background:rgba(255,255,255,.7)}
+
+/* filters */
+.filters{border:1px solid var(--line);border-radius:14px;padding:16px 16px 6px;height:560px;overflow:auto}
+.filters h3{margin:0 0 12px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.filters h3 button{border:0;background:none;color:var(--blue);cursor:pointer;font-size:13px;padding:0}
+.fg{border-top:1px solid var(--line);padding:12px 0 14px}
+.fg label.t{display:block;font-size:13px;font-weight:700;margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chips button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px}
+.chips button.on{border-color:var(--navy);background:var(--navy);color:#fff}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+select{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:#fff;font-size:13px}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;margin-bottom:8px;cursor:pointer}
+.sw input{display:none}
+.sw i{width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.sw i:after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
+.sw input:checked+i{background:var(--blue)}
+.sw input:checked+i:after{left:19px}
+.note{font-size:12px;line-height:1.4}
+.clist{max-height:170px;overflow:auto;border:1px solid var(--pale);border-radius:6px}
+.clist label{display:flex;gap:8px;align-items:center;padding:4px 8px;font-size:13px;cursor:pointer}
+.clist label:hover{background:var(--pale)}
+.clist label span{flex:1}
+
+/* table */
+.tablebox{margin-top:22px;border-top:2px solid var(--navy);padding-top:14px}
+.tablebox h2{font-family:Georgia,"Noto Serif Armenian",serif;font-weight:400;font-size:22px;margin:0 0 10px}
+table.ct{width:100%;border-collapse:collapse;font-size:14px}
+.ct th{text-align:left;font-weight:700;border-bottom:1px solid var(--navy);padding:7px 8px;cursor:pointer;white-space:nowrap}
+.ct td{border-bottom:1px solid var(--line);padding:7px 8px;font-variant-numeric:tabular-nums}
+.ct td.n,.ct th.n{text-align:right}
+.ct tr:hover td{background:var(--pale)}
+.ct tr.off td{text-decoration:line-through;opacity:.45}
+.ct .bar{display:inline-block;height:8px;background:var(--blue);border-radius:4px;vertical-align:middle;margin-right:8px}
+.more{margin-top:10px;border:1px solid var(--navy);background:#fff;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:14px}
+footer{margin-top:34px;border-top:1px solid var(--line);padding-top:16px;font-size:13px;line-height:1.55}
+footer a{color:var(--blue)}
+@media(max-width:960px){.board{grid-template-columns:1fr}.filters{height:auto}.mapbox{height:440px}.price{font-size:42px}.find{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Average export and import prices, Armenia</h1>
-  <div class="sub" id="sub">Loading data…</div>
+<div class="top"><div class="in">
+  <div class="brand" data-t="brand"></div>
+  <div class="lang"><button id="lhy" class="on">ՀԱՅ</button><button id="len">ENG</button></div>
+</div></div>
 
-  <div class="controls">
-    <div class="search">
-      <label for="q">Product (6-digit HS code or name)</label>
-      <input id="q" autocomplete="off" placeholder="For example 220820 or brandy">
+<div class="wrap">
+  <div class="find">
+    <div class="q">
+      <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="6.5" fill="none" stroke="#051C2C" stroke-width="2"/><path d="M13.5 13.5 L18 18" stroke="#051C2C" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="q" autocomplete="off">
       <div class="list" id="list"></div>
     </div>
-    <div>
-      <label>Flow</label>
-      <div class="toggle"><button id="bX" class="on">Export</button><button id="bM">Import</button></div>
-    </div>
-    <div>
-      <label for="per">Period</label>
-      <select id="per"></select>
-    </div>
+    <div class="seg"><button id="fX" data-t="export"></button><button id="fM" data-t="import"></button></div>
   </div>
 
-  <div id="out"></div>
+  <div class="answer" id="answer"></div>
 
-  <div class="note">
-    <b>How we calculate it.</b> Average price = total value ÷ total quantity over the chosen period, from monthly data that Armenia reports to UN Comtrade.
-    Price per kg uses net weight. Price per unit uses the product's own unit (litres, pieces and so on) when Comtrade gives one.
-    Rows with a unit value more than 10 times above or below the product's median are left out of the price, because they are usually recording errors.
-    <span id="built"></span>
-    <div class="btns"><a class="btn" href="data/armenia_trade_prices.xlsx">Download all (Excel)</a><a class="btn" href="data/armenia_trade_prices.csv">Download all (CSV)</a></div>
+  <div class="board">
+    <div class="mapbox">
+      <svg id="map"></svg>
+      <div class="hint" data-t="hint"></div>
+      <div class="zoom"><button id="zin" title="+">+</button><button id="zout" title="−">−</button><button id="zfit" title="⤢">⤢</button></div>
+      <div class="legend" id="legend"></div>
+      <div class="tip" id="tip"></div>
+      <div class="empty" id="empty"></div>
+    </div>
+
+    <aside class="filters">
+      <h3><span data-t="filters"></span><button id="reset" data-t="reset"></button></h3>
+      <div class="fg">
+        <label class="t" data-t="period"></label>
+        <div class="chips" id="pchips"></div>
+        <div class="two"><select id="from"></select><select id="to"></select></div>
+      </div>
+      <div class="fg">
+        <label class="sw"><span data-t="outliers"></span><input type="checkbox" id="out" checked><i></i></label>
+        <select id="outk"></select>
+        <div class="note" id="outnote" style="margin-top:6px"></div>
+      </div>
+      <div class="fg">
+        <label class="t" data-t="small"></label>
+        <select id="minkg"></select>
+      </div>
+      <div class="fg">
+        <label class="t" data-t="countries"></label>
+        <div class="clist" id="clist"></div>
+        <div class="note" style="margin-top:6px" data-t="cnote"></div>
+      </div>
+    </aside>
   </div>
+
+  <div class="tablebox">
+    <h2 data-t="bycountry"></h2>
+    <table class="ct" id="ct"></table>
+    <button class="more" id="more"></button>
+  </div>
+
+  <footer id="foot"></footer>
 </div>
 
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
 <script>
-const UNITS={l:'litre',u:'unit','2u':'pair',m:'metre',m2:'m²',m3:'m³',kg:'kg',g:'gram',carat:'carat','1000u':'1,000 units',kwh:'kWh'};
-let P=[],META=null,cur=null,flow='X',per='12m',hi=0;
+const T={
+ hy:{brand:"Արտահանման և ներմուծման գներ · Հայաստան",ph:"Ապրանք կամ ԱՏԳ ԱԱ ծածկագիր (օր. 070200)",export:"Արտահանում",import:"Ներմուծում",
+  avg_X:"Միջին արտահանման գին",avg_M:"Միջին ներմուծման գին",perkg:"ԱՄՆ դոլար / կգ",perunit:u=>`ԱՄՆ դոլար / ${u}`,
+  value:"Արժեք, ԱՄՆ դոլար",qty:"Քանակ, կգ",ncountries:"Երկրներ",months:"Ամիսներ",
+  hint:"Քաշեք, մեծացրեք, սեղմեք երկրի վրա՝ բացառելու համար",filters:"Ֆիլտրեր",reset:"Վերականգնել",period:"Ժամանակահատված",
+  p3:"3 ամիս",p12:"12 ամիս",p36:"3 տարի",pall:"Ամբողջը",outliers:"Բացառել ծայրահեղ գները",
+  k:k=>({3:'Խիստ',5:'Միջին',10:'Մեղմ'})[k]+` (×${k} միջնարժեքից)`,outnote:n=>n?`Բացառվել է ${n} ամսական գրառում`:"Ծայրահեղ գներ չեն գտնվել",
+  small:"Անտեսել փոքր առաքումները (ամսական)",none:"Չանտեսել",below:x=>`${x}-ից պակաս`,countries:"Երկրներ",
+  cnote:"Հանեք նշումը կամ սեղմեք քարտեզի վրա՝ երկիրը բացառելու համար։",bycountry_X:"Ըստ նշանակման երկրների",bycountry_M:"Ըստ ծագման երկրների",
+  country:"Երկիր",price:"Գին, $/կգ",share:"Բաժին",showall:n=>`Ցույց տալ բոլորը (${n})`,showless:"Ցույց տալ քիչ",
+  click_off:"Սեղմեք՝ բացառելու համար",click_on:"Բացառված է · սեղմեք՝ վերադարձնելու",nodata:"Այս ֆիլտրերով տվյալներ չկան",
+  noprice:"Քանակի տվյալներ չկան",pricelow:"Ցածր գին",pricehigh:"Բարձր գին",width:"Գծի հաստություն՝ արժեք",
+  per:(a,b)=>`${a} – ${b}`,based:(v,c)=>`Հիմքում՝ ${v} ԱՄՆ դոլարի առևտուր, ${c} երկիր`,
+  foot:(f,l,b)=>`<b>Ինչպես ենք հաշվում։</b> Միջին գին = ընդհանուր արժեք ÷ ընդհանուր քանակ ընտրված ժամանակահատվածում։ Աղբյուր՝ ՄԱԿ Comtrade, Հայաստանի հաշվետվությամբ ամսական տվյալներ, ${f} – ${l}։ Թարմացվում է ամեն ամիս (վերջին թարմացումը՝ ${b})։ Ծայրահեղ գներ՝ ամսական գրառումներ, որոնց միավորի գինը ընտրված անգամ բարձր կամ ցածր է միջնարժեքից։ Երկրների անվանումները՝ Արմստատ, մնացածը՝ Unicode CLDR։ <br><a href="data/armenia_trade_prices.xlsx">Ներբեռնել Excel</a> · <a href="data/armenia_trade_prices.csv">CSV</a>`,
+  vfmt:x=>x>=1e9?(x/1e9).toLocaleString('hy-AM',{maximumFractionDigits:2})+" մլրդ":x>=1e6?(x/1e6).toLocaleString('hy-AM',{maximumFractionDigits:1})+" մլն":x>=1e3?(x/1e3).toLocaleString('hy-AM',{maximumFractionDigits:0})+" հազ.":String(Math.round(x)),
+  loc:"hy-AM",units:{l:"լ",u:"հատ","2u":"զույգ",m:"մ",m2:"մ²",m3:"մ³","m²":"մ²","m³":"մ³",carat:"կարատ",kWh:"կՎտժ","1000u":"1000 հատ","12u":"դյուժին",g:"գ"}},
+ en:{brand:"Export and import prices · Armenia",ph:"Product or HS code (e.g. 070200 or tomatoes)",export:"Export",import:"Import",
+  avg_X:"Average export price",avg_M:"Average import price",perkg:"USD per kg",perunit:u=>`USD per ${u}`,
+  value:"Value, USD",qty:"Quantity, kg",ncountries:"Countries",months:"Months",
+  hint:"Drag, zoom, click a country to exclude it",filters:"Filters",reset:"Reset",period:"Period",
+  p3:"3 months",p12:"12 months",p36:"3 years",pall:"All",outliers:"Remove extreme prices",
+  k:k=>({3:'Strict',5:'Medium',10:'Loose'})[k]+` (×${k} from median)`,outnote:n=>n?`${n} monthly records removed`:"No extreme prices found",
+  small:"Ignore small shipments (per month)",none:"Keep all",below:x=>`Below ${x}`,countries:"Countries",
+  cnote:"Untick, or click on the map, to exclude a country.",bycountry_X:"By destination country",bycountry_M:"By country of origin",
+  country:"Country",price:"Price, USD/kg",share:"Share",showall:n=>`Show all (${n})`,showless:"Show fewer",
+  click_off:"Click to exclude",click_on:"Excluded · click to include",nodata:"No data with these filters",
+  noprice:"No quantity reported",pricelow:"Low price",pricehigh:"High price",width:"Line width: value",
+  per:(a,b)=>`${a} – ${b}`,based:(v,c)=>`Based on ${v} USD of trade with ${c} countries`,
+  foot:(f,l,b)=>`<b>How we calculate it.</b> Average price = total value ÷ total quantity over the chosen period. Source: UN Comtrade, monthly data reported by Armenia, ${f} – ${l}. Updated monthly (last update ${b}). Extreme prices are monthly records whose unit price is the chosen number of times above or below the median. Country names: Armstat, others Unicode CLDR.<br><a href="data/armenia_trade_prices.xlsx">Download Excel</a> · <a href="data/armenia_trade_prices.csv">CSV</a>`,
+  vfmt:x=>x>=1e9?(x/1e9).toFixed(2)+" bn":x>=1e6?(x/1e6).toFixed(1)+" m":x>=1e3?(x/1e3).toFixed(0)+" k":String(Math.round(x)),
+  loc:"en-GB",units:{l:"litre",u:"unit","2u":"pair",m:"metre",m2:"m²",m3:"m³","m²":"m²","m³":"m³",carat:"carat",kWh:"kWh","1000u":"1,000 units","12u":"dozen",g:"gram"}}
+};
+const YEREVAN=[44.51,40.18];
+let L=localStorage.getItem('tp_lang')||'hy';
+let P=[],META=null,PART=new Map(),WORLD=null,rec=null,flow='X',from=0,to=0,excluded=new Set(),outOn=true,outK=5,minKg=0,showAll=false,sortKey='v';
 const $=id=>document.getElementById(id);
-const fmtP=x=>x==null?'–':(x>=100?x.toLocaleString('en',{maximumFractionDigits:0}):x>=1?x.toFixed(2):x.toPrecision(3));
-const fmtV=x=>x>=1e9?(x/1e9).toFixed(2)+' bn':x>=1e6?(x/1e6).toFixed(1)+' m':x>=1e3?(x/1e3).toFixed(0)+' k':String(Math.round(x));
-const ym=p=>new Date(+p.slice(0,4),+p.slice(4)-1,1).toLocaleString('en',{month:'long',year:'numeric'});
+const t=k=>T[L][k];
+const fmtP=x=>x==null||!isFinite(x)?'–':x.toLocaleString(t('loc'),{minimumFractionDigits:x>=100?0:2,maximumFractionDigits:x>=100?0:(x>=1?2:3)});
+const fmtN=x=>Math.round(x).toLocaleString(t('loc'));
+const MHY=['հնվ','փտվ','մրտ','ապր','մյս','հնս','հլս','օգս','սեպ','հոկ','նոյ','դեկ'],MEN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const mname=i=>{const k=(+META.first.slice(0,4))*12+(+META.first.slice(4))-1+i;return (L==='hy'?MHY:MEN)[k%12]+' '+Math.floor(k/12)};
+const pname=c=>{const p=PART.get(c);return p?(L==='hy'?p.hy:p.en):String(c)};
+const prodName=p=>L==='hy'&&p.hy?p.hy:p.en;
 
-fetch('data/products.json').then(r=>r.json()).then(js=>{
-  P=js.products;META=js.meta;
-  $('sub').textContent=`UN Comtrade monthly data, ${ym(META.first)} to ${ym(META.latest)} · ${META.n_products.toLocaleString('en')} products · Updated ${META.built}`;
-  $('per').innerHTML=META.windows.map(w=>`<option value="${w[0]}">${w[1]}</option>`).join('');
-  $('per').value='12m';
+/* ---------- load ---------- */
+Promise.all([fetch('data/products.json').then(r=>r.json()),fetch('data/partners.json').then(r=>r.json()),fetch('vendor/countries-50m.json').then(r=>r.json())])
+.then(([pj,parts,world])=>{
+  P=pj.products.map(a=>({hs:a[0],en:a[1],hy:a[2],f:a[3],v:a[4]}));META=pj.meta;
+  parts.forEach(p=>PART.set(p.c,p));
+  WORLD=topojson.feature(world,world.objects.countries);
+  initMap();initFilters();setLang(L,true);
   const h=decodeURIComponent(location.hash.slice(1)).split('/');
-  let start=P.find(p=>p[0]===h[0]);
+  const start=P.find(p=>p.hs===h[0])||P.find(p=>p.hs==='220820')||P[0];
   if(h[1]==='M'||h[1]==='X')flow=h[1];
-  if(h[2]&&META.windows.some(w=>w[0]===h[2])){per=h[2];$('per').value=per}
-  if(!start)start=[...P].sort((a,b)=>(b[3].X||0)-(a[3].X||0))[0];
-  pick(start[0]);
+  if(h[2]&&/^\d+-\d+$/.test(h[2])){[from,to]=h[2].split('-').map(Number)}else{to=maxM();from=Math.max(0,to-11)}
+  load(start.hs);
 });
+const maxM=()=>META.months.length?monthIdx(META.latest):0;
+function monthIdx(p){return (+p.slice(0,4)-+META.first.slice(0,4))*12+(+p.slice(4))-(+META.first.slice(4))}
 
+/* ---------- language ---------- */
+function setLang(l,init){
+  L=l;try{localStorage.setItem('tp_lang',l)}catch(e){}
+  document.documentElement.lang=l==='hy'?'hy':'en';
+  $('lhy').classList.toggle('on',l==='hy');$('len').classList.toggle('on',l==='en');
+  document.querySelectorAll('[data-t]').forEach(e=>{const v=t(e.dataset.t);if(typeof v==='string')e.textContent=v});
+  $('q').placeholder=t('ph');document.title=t('brand');
+  fillFilterLabels();
+  if(rec){$('q').value=`${rec.hs} · ${prodName(rec)}`;render()}
+}
+$('lhy').onclick=()=>setLang('hy');$('len').onclick=()=>setLang('en');
+
+/* ---------- search ---------- */
+let hi=0;
 function search(s){
-  s=s.trim().toLowerCase(); if(!s){$('list').style.display='none';return}
+  s=s.trim().toLowerCase();if(!s){$('list').style.display='none';return}
   const words=s.split(/\s+/);
-  const res=P.filter(p=>p[0].startsWith(s)||words.every(w=>p[1].toLowerCase().includes(w))).slice(0,40);
+  const res=P.filter(p=>p.hs.startsWith(s.replace(/\s/g,''))||words.every(w=>(p.en+' '+(p.hy||'')).toLowerCase().includes(w)))
+    .sort((a,b)=>((b.v[flow]||0)-(a.v[flow]||0))).slice(0,60);
   hi=0;
-  $('list').innerHTML=res.length?res.map((p,i)=>`<div data-hs="${p[0]}" class="${i?'':'on'}"><b>${p[0]}</b>${p[1]}</div>`).join(''):'<div>No product found</div>';
+  $('list').innerHTML=res.length?res.map((p,i)=>`<div data-hs="${p.hs}" class="${i?'':'on'}"><b>${p.hs}</b><span>${prodName(p)}</span><em>${p.v[flow]?t('vfmt')(p.v[flow])+' $':''}</em></div>`).join(''):`<div>—</div>`;
   $('list').style.display='block';
 }
 $('q').addEventListener('input',e=>search(e.target.value));
-$('q').addEventListener('keydown',e=>{
-  const items=[...$('list').querySelectorAll('[data-hs]')]; if(!items.length)return;
-  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();items[hi].classList.remove('on');hi=(hi+(e.key==='ArrowDown'?1:items.length-1))%items.length;items[hi].classList.add('on');items[hi].scrollIntoView({block:'nearest'})}
-  if(e.key==='Enter'){pick(items[hi].dataset.hs)}
-});
-$('list').addEventListener('click',e=>{const d=e.target.closest('[data-hs]');if(d)pick(d.dataset.hs)});
-document.addEventListener('click',e=>{if(!e.target.closest('.search'))$('list').style.display='none'});
-$('bX').onclick=()=>{flow='X';render()};
-$('bM').onclick=()=>{flow='M';render()};
-$('per').onchange=e=>{per=e.target.value;render()};
+$('q').addEventListener('focus',e=>{e.target.select()});
+$('q').addEventListener('keydown',e=>{const it=[...$('list').querySelectorAll('[data-hs]')];if(!it.length)return;
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();it[hi].classList.remove('on');hi=(hi+(e.key==='ArrowDown'?1:it.length-1))%it.length;it[hi].classList.add('on');it[hi].scrollIntoView({block:'nearest'})}
+  if(e.key==='Enter')load(it[hi].dataset.hs);if(e.key==='Escape')$('list').style.display='none'});
+$('list').addEventListener('click',e=>{const d=e.target.closest('[data-hs]');if(d)load(d.dataset.hs)});
+document.addEventListener('click',e=>{if(!e.target.closest('.q'))$('list').style.display='none'});
+$('fX').onclick=()=>{flow='X';excluded.clear();render(true)};
+$('fM').onclick=()=>{flow='M';excluded.clear();render(true)};
 
-function pick(hs){
+function load(hs){
   $('list').style.display='none';
-  fetch(`data/p/${hs}.json`).then(r=>r.json()).then(rec=>{
-    cur=rec;$('q').value=`${rec.hs} · ${rec.d}`;
-    if(!rec.f[flow])flow=rec.f.X?'X':'M';
-    render();
-  });
+  fetch(`data/p/${hs}.json`).then(r=>r.json()).then(r=>{rec=r;excluded.clear();showAll=false;
+    if(!rec.f[flow])flow=rec.f.X?'X':'M';$('q').value=`${rec.hs} · ${prodName(rec)}`;$('q').blur();render(true)});
 }
 
-function render(){
-  if(!cur)return;
-  $('bX').disabled=!cur.f.X;$('bM').disabled=!cur.f.M;
-  $('bX').classList.toggle('on',flow==='X');$('bM').classList.toggle('on',flow==='M');
-  location.hash=`${cur.hs}/${flow}/${per}`;
-  const F=cur.f[flow], w=F.w[per], wl=META.windows.find(x=>x[0]===per)[1];
-  const verb=flow==='X'?'export':'import', partnerWord=flow==='X'?'destination':'origin';
-  const unit=F.unit&&UNITS[F.unit]?UNITS[F.unit]:(F.unit||null);
-  const usePq=w&&w.pq!=null&&unit&&unit!=='kg';
-  if(!w){$('out').innerHTML=`<div class="head"><div class="prod">${cur.hs} · ${cur.d}</div><div class="empty">No ${verb}s of this product in this period. Choose another period.</div></div>`;return}
-  const main=usePq?`${fmtP(w.pq)} USD per ${unit}`:(w.pkg!=null?`${fmtP(w.pkg)} USD per kg`:'not available (no quantity reported)');
-  const second=usePq&&w.pkg!=null?` That is ${fmtP(w.pkg)} USD per kg.`:'';
-  const parts=(F.p[per]||[]);
-  const key=usePq?'pq':'pkg';
-  const withP=parts.filter(a=>a[key]!=null), mx=Math.max(...withP.map(a=>a[key]),0);
-  const bars=withP.map(a=>`<div class="bar"><div>${a.n}</div><div><div class="t" style="width:${(100*a[key]/mx).toFixed(1)}%"></div></div><div class="v">${fmtP(a[key])}</div></div>`).join('')||'<div class="empty">No partner has a usable quantity in this period.</div>';
-  const rows=META.windows.filter(x=>F.w[x[0]]).map(x=>{const a=F.w[x[0]];const p=usePq?a.pq:a.pkg;
-    return `<tr class="${x[0]===per?'sel':''}"><td>${x[1]}</td><td class="n">${fmtV(a.v)}</td><td class="n">${fmtV(usePq?a.q:a.kg)}</td><td class="n">${fmtP(p)}</td></tr>`}).join('');
-  $('out').innerHTML=`
-  <div class="head">
-    <div class="prod">HS ${cur.hs} · ${cur.d}</div>
-    <div class="answer">Armenia's average ${verb} price, ${wl.toLowerCase()}: <b>${main}</b></div>
-    <div class="small">${second} Based on ${fmtV(w.v)} USD of ${verb}s and ${w.m} month${w.m>1?'s':''} with trade.</div>
-  </div>
-  <div class="grid">
-    <div class="rule"><h2>Average price by ${partnerWord}</h2><div class="small" style="margin:0 0 10px">USD per ${usePq?unit:'kg'}, ${wl.toLowerCase()}, largest partners by value</div>${bars}</div>
-    <div class="rule"><h2>Average over different periods</h2>
-      <table><tr><th>Period</th><th class="n">Value, USD</th><th class="n">Quantity, ${usePq?unit+'s':'kg'}</th><th class="n">Price, USD</th></tr>${rows}</table>
-      <div class="btns"><a class="btn p" href="data/p/${cur.hs}.json" download>This product (JSON)</a></div>
-    </div>
-  </div>`;
+/* ---------- calculation ---------- */
+function median(a){if(!a.length)return NaN;a=a.slice().sort((x,y)=>x-y);const m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2}
+function compute(){
+  const F=rec.f[flow];if(!F)return null;
+  let rows=F.r.filter(r=>r[0]>=from&&r[0]<=to);
+  let small=0;if(minKg>0){const n=rows.length;rows=rows.filter(r=>r[3]>=minKg);small=n-rows.length}
+  let removed=0;
+  if(outOn){const uv=rows.filter(r=>r[3]>0).map(r=>r[2]/r[3]);const med=median(uv);
+    if(isFinite(med)){const n=rows.length;rows=rows.filter(r=>!(r[3]>0)||((r[2]/r[3])<=med*outK&&(r[2]/r[3])>=med/outK));removed=n-rows.length}}
+  const parts=new Map();
+  for(const r of rows){let a=parts.get(r[1]);if(!a){a={c:r[1],v:0,vw:0,kg:0,vq:0,q:0,ms:new Set()};parts.set(r[1],a)}
+    a.v+=r[2];if(r[3]>0){a.vw+=r[2];a.kg+=r[3]}if(r[4]>0){a.vq+=r[2];a.q+=r[4]}a.ms.add(r[0])}
+  const tot={v:0,vw:0,kg:0,vq:0,q:0,ms:new Set(),n:0};
+  for(const a of parts.values()){a.pkg=a.kg>0?a.vw/a.kg:null;a.pq=a.q>0?a.vq/a.q:null;
+    if(excluded.has(a.c))continue;tot.v+=a.v;tot.vw+=a.vw;tot.kg+=a.kg;tot.vq+=a.vq;tot.q+=a.q;a.ms.forEach(m=>tot.ms.add(m));tot.n++}
+  tot.pkg=tot.kg>0?tot.vw/tot.kg:null;tot.pq=tot.q>0?tot.vq/tot.q:null;
+  return {tot,parts:[...parts.values()].sort((a,b)=>b.v-a.v),removed,small,unit:F.u};
 }
+
+/* ---------- render ---------- */
+let R=null;
+function render(fit){
+  if(!rec)return;
+  $('fX').disabled=!rec.f.X;$('fM').disabled=!rec.f.M;$('fX').classList.toggle('on',flow==='X');$('fM').classList.toggle('on',flow==='M');
+  location.hash=`${rec.hs}/${flow}/${from}-${to}`;
+  syncFilters();
+  R=compute();if(!R)return;
+  const {tot,unit}=R, uname=unit&&T[L].units[unit]?T[L].units[unit]:unit;
+  $('answer').innerHTML=`<div>
+      <div class="pname"><b>${rec.hs}</b> · ${prodName(rec)}</div>
+      <div class="price">${fmtP(tot.pkg)}<small>${t('perkg')}</small></div>
+      <div class="plabel">${t('avg_'+flow)} · ${t('per')(mname(from),mname(to))}${tot.pq?` · <b>${fmtP(tot.pq)}</b> ${t('perunit')(uname)}`:''}</div>
+    </div>
+    <div class="facts"><div><b>${t('vfmt')(tot.v)}</b>${t('value')}</div><div><b>${t('vfmt')(tot.kg)}</b>${t('qty')}</div><div><b>${tot.n}</b>${t('ncountries')}</div><div><b>${tot.ms.size}</b>${t('months')}</div></div>`;
+  $('outnote').textContent=outOn?t('outnote')(R.removed):'';
+  drawMap(fit);drawList();drawTable();
+  $('foot').innerHTML=t('foot')(mname(0),mname(maxM()),META.built);
+  document.querySelector('.tablebox h2').textContent=t('bycountry_'+flow);
+}
+
+/* ---------- filters ---------- */
+function initFilters(){
+  const opts=META.months.map((_,i)=>i);
+  ['from','to'].forEach(id=>$(id).onchange=e=>{const v=+e.target.value;if(id==='from'){from=Math.min(v,to)}else{to=Math.max(v,from)}render()});
+  $('out').onchange=e=>{outOn=e.target.checked;render()};
+  $('outk').onchange=e=>{outK=+e.target.value;render()};
+  $('minkg').onchange=e=>{minKg=+e.target.value;render()};
+  $('reset').onclick=()=>{excluded.clear();outOn=true;outK=5;minKg=0;to=maxM();from=Math.max(0,to-11);render(true)};
+  $('more').onclick=()=>{showAll=!showAll;drawTable()};
+}
+function fillFilterLabels(){
+  const n=maxM()+1, mopts=[...Array(n).keys()].map(i=>`<option value="${i}">${mname(i)}</option>`).join('');
+  $('from').innerHTML=mopts;$('to').innerHTML=mopts;
+  $('outk').innerHTML=[3,5,10].map(k=>`<option value="${k}">${t('k')(k)}</option>`).join('');
+  const kg=x=>L==='hy'?(x>=1000?x/1000+' տ':x+' կգ'):(x>=1000?x/1000+' t':x+' kg');
+  $('minkg').innerHTML=[0,100,1000,10000].map(x=>`<option value="${x}">${x?t('below')(kg(x)):t('none')}</option>`).join('');
+  $('pchips').innerHTML=[['p3',3],['p12',12],['p36',36],['pall',0]].map(([k,n])=>`<button data-n="${n}">${t(k)}</button>`).join('');
+  $('pchips').querySelectorAll('button').forEach(b=>b.onclick=()=>{const n=+b.dataset.n;to=maxM();from=n?Math.max(0,to-n+1):0;render()});
+}
+function syncFilters(){
+  $('from').value=from;$('to').value=to;$('out').checked=outOn;$('outk').value=outK;$('outk').disabled=!outOn;$('minkg').value=minKg;
+  const span=to-from+1;$('pchips').querySelectorAll('button').forEach(b=>{const n=+b.dataset.n;b.classList.toggle('on',to===maxM()&&(n?span===n:from===0))});
+}
+function drawList(){
+  $('clist').innerHTML=R.parts.map(a=>`<label><input type="checkbox" data-c="${a.c}" ${excluded.has(a.c)?'':'checked'}><span>${pname(a.c)}</span><em style="font-style:normal">${t('vfmt')(a.v)}</em></label>`).join('');
+  $('clist').querySelectorAll('input').forEach(i=>i.onchange=()=>toggle(+i.dataset.c));
+}
+function toggle(c){excluded.has(c)?excluded.delete(c):excluded.add(c);render()}
+
+/* ---------- table ---------- */
+function drawTable(){
+  const tot=R.tot.v||1, maxv=Math.max(...R.parts.map(a=>a.v),1);
+  const rows=[...R.parts].sort((a,b)=>sortKey==='p'?((b.pkg||0)-(a.pkg||0)):(b.v-a.v));
+  const show=showAll?rows:rows.slice(0,12);
+  $('ct').innerHTML=`<tr><th>${t('country')}</th><th class="n" data-s="p">${t('price')}</th><th class="n" data-s="v">${t('value')}</th><th class="n">${t('qty')}</th><th class="n">${t('share')}</th></tr>`+
+    show.map(a=>`<tr class="${excluded.has(a.c)?'off':''}" data-c="${a.c}"><td>${pname(a.c)}</td><td class="n"><b>${fmtP(a.pkg)}</b></td><td class="n"><span class="bar" style="width:${(60*a.v/maxv).toFixed(1)}px"></span>${t('vfmt')(a.v)}</td><td class="n">${t('vfmt')(a.kg)}</td><td class="n">${excluded.has(a.c)?'–':(100*a.v/tot).toFixed(1)+'%'}</td></tr>`).join('');
+  $('ct').querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{sortKey=th.dataset.s;drawTable()});
+  $('ct').querySelectorAll('tr[data-c]').forEach(tr=>tr.onclick=()=>toggle(+tr.dataset.c));
+  $('more').style.display=rows.length>12?'inline-block':'none';$('more').textContent=showAll?t('showless'):t('showall')(rows.length);
+}
+
+/* ---------- map ---------- */
+let svg,gRoot,gLand,gArcs,gDots,proj,path,zoom,W=800,H=560,K=1;
+function initMap(){
+  svg=d3.select('#map');const box=$('map').getBoundingClientRect();W=box.width;H=box.height;
+  svg.attr('viewBox',`0 0 ${W} ${H}`);
+  proj=d3.geoNaturalEarth1().fitExtent([[10,10],[W-10,H-10]],{type:'Sphere'});path=d3.geoPath(proj);
+  gRoot=svg.append('g');
+  gLand=gRoot.append('g');gArcs=gRoot.append('g');gDots=gRoot.append('g');
+  gLand.selectAll('path').data(WORLD.features).join('path').attr('class','country').attr('d',path)
+    .on('mousemove',(e,d)=>{const a=d.__a;if(a)showTip(e,a);else hideTip()}).on('mouseleave',hideTip)
+    .on('click',(e,d)=>{if(d.__a)toggle(d.__a.c)});
+  const [hx,hy]=proj(YEREVAN);
+  gDots.append('circle').attr('class','homepulse').attr('cx',hx).attr('cy',hy).attr('r',6);
+  gDots.append('circle').attr('class','home').attr('cx',hx).attr('cy',hy).attr('r',4);
+  zoom=d3.zoom().scaleExtent([1,40]).on('zoom',e=>{gRoot.attr('transform',e.transform);K=e.transform.k;scaleDots()});
+  svg.call(zoom).on('dblclick.zoom',null);
+  $('zin').onclick=()=>svg.transition().duration(350).call(zoom.scaleBy,1.6);
+  $('zout').onclick=()=>svg.transition().duration(350).call(zoom.scaleBy,1/1.6);
+  $('zfit').onclick=()=>fitView(true);
+}
+function scaleDots(){gDots.selectAll('.dot').attr('r',d=>d.r/K);gDots.select('.home').attr('r',4.5/K);gDots.select('.homepulse').attr('r',9/K)}
+let colorScale=null;
+function drawMap(fit){
+  const [hx,hy]=proj(YEREVAN);
+  const parts=R.parts.filter(a=>PART.get(a.c)&&PART.get(a.c).lat!=null);
+  const byNum=new Map();parts.forEach(a=>{const n=PART.get(a.c).n;if(n)byNum.set(n,a)});
+  const prices=parts.filter(a=>!excluded.has(a.c)&&a.pkg).map(a=>a.pkg).sort((x,y)=>x-y);
+  const lo=prices.length?d3.quantile(prices,.05):1, hi_=prices.length?d3.quantile(prices,.95):2;
+  colorScale=d3.scaleSequentialLog(d3.interpolateRgb('#B3C6FF','#1F45E6')).domain([Math.max(lo,1e-6),Math.max(hi_,lo*1.01)]).clamp(true);
+  gLand.selectAll('path').each(function(d){const a=byNum.get(d.id);d.__a=a||null;
+    const s=d3.select(this);s.classed('has',!!a).classed('off',!!a&&excluded.has(a.c)).classed('arm',d.id==='051');
+    s.style('fill',d.id==='051'?null:(a&&!excluded.has(a.c)&&a.pkg?colorScale(a.pkg):null))});
+  const maxv=d3.max(parts,a=>a.v)||1, w=d3.scaleSqrt().domain([0,maxv]).range([.8,10]), rr=d3.scaleSqrt().domain([0,maxv]).range([2,8]);
+  const vis=parts.filter(a=>!excluded.has(a.c)).sort((a,b)=>a.v-b.v);
+  const arcD=a=>{const p=PART.get(a.c);const [x,y]=proj([p.lon,p.lat]);const dx=x-hx,dy=y-hy,dist=Math.hypot(dx,dy)||1;
+    const bend=Math.min(.32,.18+40/dist);const cx=(hx+x)/2-dy*bend,cy=(hy+y)/2+dx*bend;return `M${hx},${hy}Q${cx},${cy} ${x},${y}`};
+  gArcs.selectAll('path.arc').data(vis,a=>a.c).join('path').attr('class','arc').attr('d',arcD).style('stroke-width',a=>w(a.v)+'px')
+    .on('mousemove',(e,a)=>{showTip(e,a);d3.select(e.currentTarget).classed('hi',true)}).on('mouseleave',e=>{hideTip();d3.select(e.currentTarget).classed('hi',false)})
+    .on('click',(e,a)=>toggle(a.c));
+  gArcs.selectAll('path.flow').data(vis,a=>a.c).join('path').attr('class','flow'+(flow==='M'?' rev':'')).attr('d',arcD).style('stroke-width',a=>Math.max(1.2,w(a.v)*.45)+'px');
+  gDots.selectAll('circle.dot').data(vis.map(a=>{const p=PART.get(a.c);const [x,y]=proj([p.lon,p.lat]);return {x,y,r:rr(a.v)}}))
+    .join('circle').attr('class','dot').attr('cx',d=>d.x).attr('cy',d=>d.y);
+  gDots.select('.homepulse').raise();gDots.select('.home').raise();scaleDots();
+  $('empty').style.display=vis.length?'none':'flex';$('empty').textContent=t('nodata');
+  $('legend').innerHTML=`<div><div>${t('price')}</div><div class="ramp" style="background:linear-gradient(90deg,#B3C6FF,#1F45E6)"></div><div class="ends"><span>${fmtP(lo)}</span><span>${fmtP(hi_)}</span></div></div>
+    <div><div>${t('width')}</div><svg width="90" height="16"><line x1="2" x2="28" y1="12" y2="12" stroke="#051C2C" stroke-opacity=".5" stroke-width="1"/><line x1="34" x2="60" y1="10" y2="10" stroke="#051C2C" stroke-opacity=".5" stroke-width="4"/><line x1="66" x2="88" y1="9" y2="9" stroke="#051C2C" stroke-opacity=".5" stroke-width="8"/></svg></div>`;
+  if(fit)fitView(true);
+}
+function fitView(anim){
+  const vis=R.parts.filter(a=>!excluded.has(a.c)&&PART.get(a.c)&&PART.get(a.c).lat!=null);let cum=0;const sum=d3.sum(vis,a=>a.v)||1;const core=vis.filter((a,i)=>{const take=i<4||cum/sum<.9;cum+=a.v;return take});
+  const pts=[YEREVAN,...core.map(a=>[PART.get(a.c).lon,PART.get(a.c).lat])].map(p=>proj(p));
+  let [x0,y0,x1,y1]=[d3.min(pts,p=>p[0]),d3.min(pts,p=>p[1]),d3.max(pts,p=>p[0]),d3.max(pts,p=>p[1])];
+  const pad=60;let k=Math.min((W-2*pad)/Math.max(x1-x0,80),(H-2*pad)/Math.max(y1-y0,60));k=Math.max(1,Math.min(k,12));
+  const tr=d3.zoomIdentity.translate(W/2-k*(x0+x1)/2,H/2-k*(y0+y1)/2).scale(k);
+  (anim?svg.transition().duration(800):svg).call(zoom.transform,tr);
+}
+function showTip(e,a){
+  const box=document.querySelector('.mapbox').getBoundingClientRect(), tip=$('tip'), off=excluded.has(a.c);
+  const unit=R.unit&&T[L].units[R.unit]?T[L].units[R.unit]:R.unit;
+  tip.innerHTML=`<h4>${pname(a.c)}</h4>${a.pkg?`<div class="tp">${fmtP(a.pkg)} <small>${t('perkg')}</small></div>`:`<div>${t('noprice')}</div>`}
+   <table>${a.pq?`<tr><td>${t('perunit')(unit)}</td><td>${fmtP(a.pq)}</td></tr>`:''}<tr><td>${t('value')}</td><td>${t('vfmt')(a.v)}</td></tr><tr><td>${t('qty')}</td><td>${t('vfmt')(a.kg)}</td></tr>
+   <tr><td>${t('share')}</td><td>${off?'–':(100*a.v/(R.tot.v||1)).toFixed(1)+'%'}</td></tr><tr><td>${t('months')}</td><td>${a.ms.size}</td></tr></table>
+   <div class="act">${off?t('click_on'):t('click_off')}</div>`;
+  let x=e.clientX-box.left+16,y=e.clientY-box.top+16;if(x+230>box.width)x-=250;if(y+190>box.height)y-=200;
+  tip.style.left=x+'px';tip.style.top=y+'px';tip.style.opacity=1;
+}
+function hideTip(){$('tip').style.opacity=0}
+window.addEventListener('resize',()=>{});
 </script>
 </body>
 </html>
