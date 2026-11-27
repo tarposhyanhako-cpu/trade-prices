@@ -5,7 +5,7 @@ on:
     - cron: "23 2 * * *"   # every day until complete, then it only checks
   push:
     branches: [main]
-    paths: ["scripts/fetch_compare.py"]
+    paths: ["R/fetch_compare.R"]
   workflow_dispatch: {}
 
 permissions:
@@ -23,15 +23,16 @@ jobs:
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: r-lib/actions/setup-r@v2
         with:
-          python-version: "3.12"
-      - run: pip install -r requirements.txt
+          use-public-rspm: true
+      - name: Install R packages
+        run: Rscript -e 'install.packages(c("httr2", "jsonlite", "data.table", "openxlsx", "R.utils"))'
       - name: Download other countries' yearly trade (stops at the daily limit)
         env:
           COMTRADE_API_KEY: ${{ secrets.COMTRADE_API_KEY }}
           MAX_CALLS: ${{ github.event_name == 'push' && '120' || '440' }}
-        run: python scripts/fetch_compare.py
+        run: Rscript R/fetch_compare.R
       - name: Save downloaded data
         run: |
           git config user.name "github-actions[bot]"
@@ -40,7 +41,7 @@ jobs:
           git commit -m "Comparison data $(date -u +%Y-%m-%d)" || echo "No new data"
           git pull --rebase && git push
       - name: Calculate page data
-        run: python scripts/build.py
+        run: Rscript R/build.R
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

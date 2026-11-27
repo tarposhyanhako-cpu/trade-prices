@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
   push:
     branches: [main]
-    paths: ["scripts/**", ".github/workflows/**", "site/**", "data/ref/**"]
+    paths: ["R/build.R", "R/fetch.R", ".github/workflows/update.yml", "site/**", "data/ref/**"]
 
 permissions:
   contents: write
@@ -23,14 +23,15 @@ jobs:
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: r-lib/actions/setup-r@v2
         with:
-          python-version: "3.12"
-      - run: pip install -r requirements.txt
+          use-public-rspm: true
+      - name: Install R packages
+        run: Rscript -e 'install.packages(c("httr2", "jsonlite", "data.table", "openxlsx", "R.utils"))'
       - name: Download new months from UN Comtrade
         env:
           COMTRADE_API_KEY: ${{ secrets.COMTRADE_API_KEY }}
-        run: python scripts/fetch.py
+        run: Rscript R/fetch.R
       - name: Save downloaded data
         run: |
           git config user.name "github-actions[bot]"
@@ -39,7 +40,7 @@ jobs:
           git commit -m "Raw data update $(date -u +%Y-%m-%d)" || echo "No new raw data"
           git pull --rebase && git push
       - name: Calculate average prices
-        run: python scripts/build.py
+        run: Rscript R/build.R
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
