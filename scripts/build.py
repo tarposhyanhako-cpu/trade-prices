@@ -63,57 +63,73 @@ def windows(latest, first):
     return w
 
 
-def agg(g):
-    v = g["primaryValue"].sum()
-    vw = g.loc[g["okw"], "primaryValue"].sum(); kg = g.loc[g["okw"], "netWgt"].sum()
-    vq = g.loc[g["okq"], "primaryValue"].sum(); q = g.loc[g["okq"], "qty"].sum()
-    return {"v": round(float(v), 0),
-            "kg": round(float(kg), 0),
-            "pkg": round(float(vw / kg), 4) if kg > 0 else None,
-            "q": round(float(q), 0),
-            "pq": round(float(vq / q), 4) if q > 0 else None,
-            "m": int(g["period"].nunique())}
-
-
 def short(s, n=110):
     s = re.sub(r"\s+", " ", str(s or "")).strip()
     return s if len(s) <= n else s[: n - 1].rstrip() + "…"
 
 
+def sums(s, keys):
+    g = s.groupby(keys, sort=False)
+    out = g[["primaryValue", "vw", "kgw", "vq", "qq"]].sum()
+    out["m"] = g["period"].nunique()
+    out = out.reset_index()
+    out["pkg"] = np.where(out["kgw"] > 0, out["vw"] / out["kgw"].where(out["kgw"] > 0), np.nan)
+    out["pq"] = np.where(out["qq"] > 0, out["vq"] / out["qq"].where(out["qq"] > 0), np.nan)
+    return out
+
+
+def rec_of(r):
+    f = lambda x: None if pd.isna(x) else round(float(x), 4)
+    return {"v": round(float(r.primaryValue), 0), "kg": round(float(r.kgw), 0), "pkg": f(r.pkg),
+            "q": round(float(r.qq), 0), "pq": f(r.pq), "m": int(r.m)}
+
+
 def main():
     df = flag_outliers(load())
+    df["vw"] = df["primaryValue"].where(df["okw"], 0.0)
+    df["kgw"] = df["netWgt"].where(df["okw"], 0.0)
+    df["vq"] = df["primaryValue"].where(df["okq"], 0.0)
+    df["qq"] = df["qty"].where(df["okq"], 0.0)
     latest, first = df["period"].max(), df["period"].min()
     W = windows(latest, first)
+    lab = {k: v[2] for k, v in W.items()}
+
+    desc = df.dropna(subset=["cmdDesc"]).groupby("cmdCode")["cmdDesc"].last()
+    pname = df.dropna(subset=["partnerDesc"]).groupby("partnerCode")["partnerDesc"].last()
+    uq = df[df["okq"]].groupby(["cmdCode", "flowCode"])["qtyUnitAbbr"].agg(lambda x: x.value_counts().index[0])
+
+    R = {}
+    def node(hs, fl):
+        r = R.setdefault(hs, {"hs": hs, "d": short(desc.get(hs, ""), 300), "f": {}})
+        return r["f"].setdefault(fl, {"unit": uq.get((hs, fl)), "w": {}, "p": {}})
+
+    long_rows = []
+    for wk, (lo, hi, _) in W.items():
+        s = df[(df["period"] >= lo) & (df["period"] <= hi)]
+        if s.empty:
+            continue
+        for r in sums(s, ["cmdCode", "flowCode"]).itertuples(index=False):
+            a = rec_of(r)
+            node(r.cmdCode, r.flowCode)["w"][wk] = a
+            long_rows.append([r.cmdCode, desc.get(r.cmdCode, ""), FLOWS[r.flowCode], "All partners", wk, a, uq.get((r.cmdCode, r.flowCode))])
+        par = sums(s, ["cmdCode", "flowCode", "partnerCode"]).sort_values(
+            ["cmdCode", "flowCode", "primaryValue"], ascending=[True, True, False])
+        par["rank"] = par.groupby(["cmdCode", "flowCode"]).cumcount()
+        for r in par.itertuples(index=False):
+            a = rec_of(r); a["n"] = pname.get(r.partnerCode, str(r.partnerCode))
+            if r.rank < TOP_PARTNERS:
+                node(r.cmdCode, r.flowCode)["p"].setdefault(wk, []).append(a)
+            if wk in ("12m", "36m"):
+                long_rows.append([r.cmdCode, desc.get(r.cmdCode, ""), FLOWS[r.flowCode], a["n"], wk, a, uq.get((r.cmdCode, r.flowCode))])
+
     (OUT / "p").mkdir(parents=True, exist_ok=True)
     for old in (OUT / "p").glob("*.json"):
         old.unlink()
-
-    products, long_rows = [], []
-    for hs, g in df.groupby("cmdCode", sort=True):
-        desc = g["cmdDesc"].dropna().iloc[-1] if g["cmdDesc"].notna().any() else ""
-        rec = {"hs": hs, "d": short(desc, 300), "f": {}}
-        for fl, gf in g.groupby("flowCode"):
-            unit = gf.loc[gf["okq"], "qtyUnitAbbr"].mode()
-            unit = unit.iloc[0] if len(unit) else None
-            fr = {"unit": unit, "w": {}, "p": {}}
-            for wk, (lo, hi, _) in W.items():
-                gw = gf[(gf["period"] >= lo) & (gf["period"] <= hi)]
-                if gw.empty:
-                    continue
-                tot = agg(gw)
-                fr["w"][wk] = tot
-                long_rows.append([hs, desc, FLOWS[fl], "All partners", wk, tot, unit])
-                parts = []
-                for (pc, pn), gp in gw.groupby(["partnerCode", "partnerDesc"]):
-                    a = agg(gp); a["n"] = pn
-                    parts.append(a)
-                    if wk in ("12m", "36m"):
-                        long_rows.append([hs, desc, FLOWS[fl], pn, wk, a, unit])
-                parts.sort(key=lambda a: -a["v"])
-                fr["p"][wk] = parts[:TOP_PARTNERS]
-            rec["f"][fl] = fr
+    products = []
+    for hs in sorted(R):
+        rec = R[hs]
         (OUT / "p" / f"{hs}.json").write_text(json.dumps(rec, separators=(",", ":"), ensure_ascii=False))
-        products.append([hs, short(desc), sorted(rec["f"].keys()),
+        products.append([hs, short(desc.get(hs, "")), sorted(rec["f"].keys()),
                          {fl: rec["f"][fl]["w"].get("12m", {}).get("v", 0) for fl in rec["f"]}])
 
     meta = {"latest": latest, "first": first, "built": date.today().isoformat(),
@@ -124,7 +140,6 @@ def main():
 
     cols = ["HS6", "Product", "Flow", "Partner", "Period", "Value (USD)", "Net weight (kg)",
             "Average price (USD per kg)", "Quantity", "Unit", "Average price (USD per unit)", "Months with trade"]
-    lab = {k: v[2] for k, v in W.items()}
     rows = [[hs, d, fl, pn, lab[wk], a["v"], a["kg"], a["pkg"], a["q"], u if a["pq"] else None, a["pq"], a["m"]]
             for hs, d, fl, pn, wk, a, u in long_rows]
     t = pd.DataFrame(rows, columns=cols)
