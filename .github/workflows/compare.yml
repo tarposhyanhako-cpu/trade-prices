@@ -29,6 +29,7 @@ jobs:
       - name: Install R packages
         run: Rscript -e 'install.packages(c("httr2", "jsonlite", "data.table", "openxlsx", "R.utils"))'
       - name: Download other countries' yearly trade (stops at the daily limit)
+        continue-on-error: true   # if the UN limit is reached, still rebuild with the data we have
         env:
           COMTRADE_API_KEY: ${{ secrets.COMTRADE_API_KEY }}
           MAX_CALLS: ${{ github.event_name == 'push' && '120' || '440' }}
