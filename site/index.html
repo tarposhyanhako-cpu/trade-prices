@@ -309,10 +309,10 @@ const MHY=['հնվ','փտվ','մրտ','ապր','մյս','հնս','հլս','օգ�
 const mname=i=>{const k=(+META.first.slice(0,4))*12+(+META.first.slice(4))-1+i;return (L==='hy'?MHY:MEN)[k%12]+' '+Math.floor(k/12)};
 const pname=c=>{const p=PART.get(c);return p?(L==='hy'?p.hy:p.en):String(c)};
 const prodName=p=>L==='hy'?(p.hy||`ԱՏԳ ԱԱ ${p.hs}`):p.en;
-const NOCACHE='?t='+Math.floor(Date.now()/36e5);
+const pct=x=>(100*x).toLocaleString(t('loc'),{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
 
 /* ---------- load ---------- */
-Promise.all([fetch('data/products.json'+NOCACHE).then(r=>r.json()),fetch('data/partners.json'+NOCACHE).then(r=>r.json()),fetch('vendor/countries-50m.json').then(r=>r.json())])
+Promise.all([fetch('data/products.json',{cache:'no-cache'}).then(r=>r.json()),fetch('data/partners.json',{cache:'no-cache'}).then(r=>r.json()),fetch('vendor/countries-50m.json').then(r=>r.json())])
 .then(([pj,parts,world])=>{
   P=pj.products.map(a=>({hs:a[0],en:a[1],hy:a[2],f:a[3],v:a[4]}));META=pj.meta;
   parts.forEach(p=>PART.set(p.c,p));
@@ -452,7 +452,7 @@ function drawTable(){
   const show=showAll?rows:rows.slice(0,15);
   const maxp=d3.max(rows.filter(a=>!excluded.has(a.c)),a=>a.pkg||0)||1;
   $('ct').innerHTML=`<tr><th></th><th>${t('country')}</th><th class="n ${sortKey==='p'?'on':''}" data-s="p">${t('price')} ↓</th><th></th><th class="n ${sortKey==='v'?'on':''}" data-s="v">${t('value')} ↓</th><th class="n">${t('qty')}</th><th class="n">${t('share')}</th></tr>`+
-    show.map(a=>`<tr class="${excluded.has(a.c)?'off':''}" data-c="${a.c}"><td><span class="ck"></span></td><td>${pname(a.c)}</td><td class="n"><b>${fmtP(a.pkg)}</b></td><td class="pb"><span class="bar" style="width:${a.pkg?Math.max(1,100*Math.min(a.pkg,maxp)/maxp).toFixed(1):0}%"></span></td><td class="n">${t('vfmt')(a.v)}</td><td class="n">${t('vfmt')(a.kg)}</td><td class="n">${excluded.has(a.c)?'–':(100*a.v/tot).toFixed(1)+'%'}</td></tr>`).join('');
+    show.map(a=>`<tr class="${excluded.has(a.c)?'off':''}" data-c="${a.c}"><td><span class="ck"></span></td><td>${pname(a.c)}</td><td class="n"><b>${fmtP(a.pkg)}</b></td><td class="pb"><span class="bar" style="width:${a.pkg?Math.max(1,100*Math.min(a.pkg,maxp)/maxp).toFixed(1):0}%"></span></td><td class="n">${t('vfmt')(a.v)}</td><td class="n">${t('vfmt')(a.kg)}</td><td class="n">${excluded.has(a.c)?'–':pct(a.v/tot)}</td></tr>`).join('');
   $('ct').querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{sortKey=th.dataset.s;drawTable()});
   $('ct').querySelectorAll('tr[data-c]').forEach(tr=>tr.onclick=()=>toggle(+tr.dataset.c));
   $('more').style.display=rows.length>15?'inline-block':'none';$('more').textContent=showAll?t('showless'):t('showall')(rows.length);
@@ -627,7 +627,7 @@ function showTip(e,a){
   const unit=R.unit&&T[L].units[R.unit]?T[L].units[R.unit]:R.unit;
   $('tip').innerHTML=`<h4>${pname(a.c)}</h4>${a.pkg?`<div class="tp">${fmtP(a.pkg)} <small>${t('perkg')}</small></div>`:`<div>${t('noprice')}</div>`}
    <table>${a.pq?`<tr><td>${t('perunit')(unit)}</td><td>${fmtP(a.pq)}</td></tr>`:''}<tr><td>${t('value')}</td><td>${t('vfmt')(a.v)}</td></tr><tr><td>${t('qty')}</td><td>${t('vfmt')(a.kg)}</td></tr>
-   <tr><td>${t('share')}</td><td>${off?'–':(100*a.v/(R.tot.v||1)).toFixed(1)+'%'}</td></tr><tr><td>${t('months')}</td><td>${a.ms.size}</td></tr></table>
+   <tr><td>${t('share')}</td><td>${off?'–':pct(a.v/(R.tot.v||1))}</td></tr><tr><td>${t('months')}</td><td>${a.ms.size}</td></tr></table>
    <div class="act">${off?t('click_on'):t('click_off')}</div>`;
   placeTip(e);
 }
