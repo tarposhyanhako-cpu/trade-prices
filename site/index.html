@@ -8,338 +8,291 @@
 @font-face{font-family:Inter;src:url(vendor/fonts/inter-latin-400-normal.woff2) format('woff2');font-weight:400}
 @font-face{font-family:Inter;src:url(vendor/fonts/inter-latin-600-normal.woff2) format('woff2');font-weight:600}
 @font-face{font-family:Inter;src:url(vendor/fonts/inter-latin-700-normal.woff2) format('woff2');font-weight:700}
-
-/* ---------- colours ---------- */
 :root{
-  --bg:#FFFFFF;--panel:rgba(255,255,255,.95);--panel-solid:#FFFFFF;--text:#1F2328;--soft:#626A73;--line:#E3E7EA;--hover:#F2F6F6;
-  --accent:#0FA3A3;--accent-ink:#FFFFFF;--accent2:#B8264A;
-  --land:#ECEFF1;--edge:#FFFFFF;--arm:#1F2328;--ramp0:#D3F0EE;--ramp1:#0B7F80;
-  --arc:#1F2328;--arc-op:.38;--flowdot:#FFFFFF;--shadow:0 14px 34px rgba(15,40,45,.12);--glow:none;--off:#F7F8F9;
+  --bg:#FFFFFF;--text:#0D2B33;--line:#D7E2E3;--pale:#F0F7F7;
+  --accent:#0FA3A3;--accent-d:#0B7F80;--accent-l:#BDE5E2;--accent2:#B8264A;
+  --land:#E8EEEF;--edge:#FFFFFF;--arm:#0D2B33;--ramp0:#CFEEEB;--ramp1:#0A6E70;
+  --arc:#0A6E70;--arc-op:.45;
 }
-
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:Inter,"Noto Sans Armenian",-apple-system,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.45}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,"Noto Sans Armenian","Arial Armenian",-apple-system,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.45}
 button,input,select{font:inherit;color:inherit}
+h2{font-size:18px;font-weight:700;margin:0}
 
-/* ---------- compare with other countries ---------- */
-const REGION=new Set([268,31,792,364,398,860,417,112,498,804]);
-function renderCmp(fit){
-  const box=$('cmp');
-  if(!CMP||!CMP.f||!CMP.f[flow]){box.innerHTML=`<div class="cmphead" style="margin-top:14px">${t('cmploading')}</div>`;clearCmpMap();return}
-  const rows=CMP.f[flow], years=CMP.years;
-  if(!cyear||!years.includes(cyear))cyear=years[years.length-1];
-  const dests=[...new Set(rows.map(r=>r[2]))];
-  const dv=new Map();rows.forEach(r=>{if(r[1]===51&&r[0]===cyear)dv.set(r[2],(dv.get(r[2])||0)+r[3])});
-  const dlist=[0,...dests.filter(d=>d!==0).sort((a,b)=>(dv.get(b)||0)-(dv.get(a)||0))];
-  if(!dlist.includes(dest))dest=0;
-  const by=new Map();
-  rows.forEach(r=>{if(r[0]!==cyear||r[2]!==dest||r[1]===dest)return;let a=by.get(r[1]);if(!a){a={c:r[1],v:0,kg:0};by.set(r[1],a)}a.v+=r[3];a.kg+=r[4]});
-  let list=[...by.values()].filter(a=>a.kg>0&&a.v>0).map(a=>({...a,p:a.v/a.kg}));
-  const totv=d3.sum(list,a=>a.v)||1;
-  list=list.filter(a=>a.c===51||REGION.has(a.c)||a.v/totv>=0.002);
-  const arm=list.find(a=>a.c===51);
-  const others=list.filter(a=>a.c!==51);const avgO=d3.sum(others,a=>a.v)/(d3.sum(others,a=>a.kg)||1);
-  const byP=[...list].sort((a,b)=>b.p-a.p);const rank=arm?byP.findIndex(a=>a.c===51)+1:0;
-  const top=[...list].sort((a,b)=>b.v-a.v);
-  let show=top.slice(0,12);list.forEach(a=>{if((REGION.has(a.c)||a.c===51)&&!show.includes(a))show.push(a)});
-  show.sort(csort==='p'?(a,b)=>b.p-a.p:(a,b)=>b.v-a.v);
-  const maxp=d3.max(show,a=>a.p)||1;
-  const dname=c=>c===0?t('world'):pname(c);
-  box.innerHTML=`<div class="cmpctl"><div><label>${t('dest_'+flow)}</label><select id="cdest">${dlist.map(d=>`<option value="${d}" ${d===dest?'selected':''}>${dname(d)}</option>`).join('')}</select></div>
-     <div><label>${t('year')}</label><select id="cyear">${years.slice().reverse().map(y=>`<option ${y===cyear?'selected':''}>${y}</option>`).join('')}</select></div></div>
-   <div class="cmphead"><b>${rec.hs}</b> · ${prodName(rec)} · ${dname(dest)} · ${cyear}</div>
-   <div class="cmpbig"><div><div class="o" style="margin-bottom:4px">${t('armprice_'+flow)}</div><div class="v">${arm?fmtP(arm.p):'–'}<small>${t('perkg')}</small></div></div>
-     <div class="o"><b>${fmtP(avgO)}</b>${t('others')}</div></div>
-   <div class="o" style="font-size:12.5px;color:var(--soft)">${t('rankof')(rank,list.length)}</div>
-   <div class="rank"><div class="hdr"><span>${t('country')}</span><span>${t('sortby')}: <button class="sortlnk" id="csort">${csort==='p'?t('byprice'):t('byvalue')}</button></span><span>${t('perkg')}</span><span>${t('value')}</span></div>
-     ${show.map(a=>`<div class="r ${a.c===51?'arm':''} ${REGION.has(a.c)?'reg':''}" data-c="${a.c}"><span class="nm">${pname(a.c)}</span><span><span class="b" style="display:block;width:${(100*a.p/maxp).toFixed(1)}%"></span></span><span class="p">${fmtP(a.p)}</span><span class="val">${t('vfmt')(a.v)}</span></div>`).join('')}
-     ${arm?'':`<div class="r arm"><span class="nm">${t('noarm')}</span></div>`}</div>
-   <div class="note" style="margin-top:8px">${flow==='X'?t('regnote'):t('regnoteM')}<br>${t('cmpsrc')(cyear)}</div>`;
-  $('cdest').onchange=e=>{dest=+e.target.value;render(true)};$('cyear').onchange=e=>{cyear=+e.target.value;render()};
-  $('csort').onclick=()=>{csort=csort==='p'?'v':'p';render()};
-  box.querySelectorAll('.r[data-c]').forEach(el=>{el.onmouseenter=()=>hiRep(+el.dataset.c,true);el.onmouseleave=()=>hiRep(+el.dataset.c,false)});
-  drawCmpMap(list,dest,fit);
-}
-function clearCmpMap(){gArcs.selectAll('*').remove();gDots.selectAll('.dot').remove();gLand.selectAll('path').classed('has',false).classed('off',false).classed('dest',false).style('fill',null).each(d=>{d.__a=null;d.__r=null})}
-function hiRep(c,on){gArcs.selectAll('path.arc').filter(a=>a.c===c).classed('hi',on)}
-function drawCmpMap(list,dest,fit){
-  const dp=dest===0?null:PART.get(dest);
-  const prices=list.map(a=>a.p).sort((x,y)=>x-y);
-  const lo=prices.length?d3.quantile(prices,.05):1, hi_=prices.length?d3.quantile(prices,.95):2;
-  const ramp=d3.scaleSequentialLog(d3.interpolateRgb(css('--ramp0'),css('--ramp1'))).domain([Math.max(lo,1e-6),Math.max(hi_,lo*1.01)]).clamp(true);
-  const byNum=new Map();list.forEach(a=>{const p=PART.get(a.c);if(p&&p.n)byNum.set(p.n,a)});
-  gLand.selectAll('path').each(function(d){const a=byNum.get(d.id);d.__a=null;d.__r=a||null;const s=d3.select(this);
-    const isDest=dp&&dp.n===d.id;s.classed('has',!!a).classed('off',false).classed('dest',!!isDest).classed('arm',d.id==='051');
-    s.style('fill',d.id==='051'||isDest?null:(a?ramp(a.p):null))});
-  gLand.selectAll('path').on('mousemove',(e,d)=>{if(d.__r)showCmpTip(e,d.__r);else if(d.__a)showTip(e,d.__a);else hideTip()});
-  const maxv=d3.max(list,a=>a.v)||1, w=d3.scaleSqrt().domain([0,maxv]).range([.8,10]), rr=d3.scaleSqrt().domain([0,maxv]).range([2,9]);
-  const pts=list.map(a=>{const p=PART.get(a.c);return p&&p.lat!=null?{a,xy:proj([p.lon,p.lat])}:null}).filter(Boolean);
-  const arcs=dp?pts:[];const [dx0,dy0]=dp?proj([dp.lon,dp.lat]):[0,0];
-  const arcD=o=>{const [x,y]=o.xy;const dx=dx0-x,dy=dy0-y,dist=Math.hypot(dx,dy)||1;const bend=Math.min(.32,.18+40/dist);return `M${x},${y}Q${(x+dx0)/2-dy*bend},${(y+dy0)/2+dx*bend} ${dx0},${dy0}`};
-  gArcs.selectAll('path.arc').data(arcs.map(o=>({...o,c:o.a.c})),d=>d.c).join('path').attr('class','arc').attr('d',arcD).style('stroke-width',o=>w(o.a.v)+'px')
-    .style('stroke',o=>o.a.c===51?css('--accent'):null).style('stroke-opacity',o=>o.a.c===51?1:null)
-    .on('mousemove',(e,o)=>{showCmpTip(e,o.a);d3.select(e.currentTarget).classed('hi',true)}).on('mouseleave',e=>{hideTip();d3.select(e.currentTarget).classed('hi',false)}).on('click',null);
-  gArcs.selectAll('path.flow').data(arcs.map(o=>({...o,c:o.a.c})),d=>d.c).join('path').attr('class','flow').attr('d',arcD).style('stroke-width',o=>Math.max(1.2,w(o.a.v)*.45)+'px');
-  gDots.selectAll('circle.dot').data(pts.map(o=>({x:o.xy[0],y:o.xy[1],r:rr(o.a.v)}))).join('circle').attr('class','dot').attr('cx',d=>d.x).attr('cy',d=>d.y);
-  gDots.select('.homepulse').raise();gDots.select('.home').raise();scaleDots();
-  $('legend').innerHTML=`<div><div>${t('price')}</div><div class="ramp" style="background:linear-gradient(90deg,${css('--ramp0')},${css('--ramp1')})"></div><div class="ends"><span>${fmtP(lo)}</span><span>${fmtP(hi_)}</span></div></div>`;
-  $('empty').style.display='none';
-  if(fit){const P2=[...pts.sort((a,b)=>b.a.v-a.a.v).slice(0,10).map(o=>o.xy),proj(YEREVAN)];if(dp)P2.push([dx0,dy0]);fitPts(P2)}
-}
-function showCmpTip(e,a){
-  const tip=$('tip');tip.innerHTML=`<h4>${pname(a.c)}</h4><div class="tp">${fmtP(a.p)} <small>${t('perkg')}</small></div><table><tr><td>${t('value')}</td><td>${t('vfmt')(a.v)}</td></tr><tr><td>${t('qty')}</td><td>${t('vfmt')(a.kg)}</td></tr></table>`;
-  let x=e.clientX+16,y=e.clientY+16;if(x+240>innerWidth)x-=260;if(y+160>innerHeight)y-=170;tip.style.left=x+'px';tip.style.top=y+'px';tip.style.opacity=1;
-}
-function fitPts(pts){
-  const [x0,y0,x1,y1]=[d3.min(pts,p=>p[0]),d3.min(pts,p=>p[1]),d3.max(pts,p=>p[0]),d3.max(pts,p=>p[1])];
-  const left=innerWidth>900?480:20, right=60, top=40, bottom=90, aw=W-left-right, ah=H-top-bottom;
-  let k=Math.min(aw/Math.max(x1-x0,80),ah/Math.max(y1-y0,60))*.85;k=Math.max(1,Math.min(k,12));
-  svg.transition().duration(900).call(zoom.transform,d3.zoomIdentity.translate(left+aw/2-k*(x0+x1)/2,top+ah/2-k*(y0+y1)/2).scale(k));
-}
+/* top bar */
+.top{border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:20}
+.top .in{max-width:1240px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:28px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px}
+.brand .mark{width:24px;height:24px;border-radius:7px;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.brand .mark i{width:8px;height:8px;border-radius:50%;background:#fff;display:block}
+.mode{display:flex;gap:4px;height:100%}
+.mode button{border:0;background:none;padding:0 12px;cursor:pointer;font-size:15px;font-weight:600;border-bottom:3px solid transparent;height:100%}
+.mode button.on{border-color:var(--accent);color:var(--accent-d)}
+.lang{margin-left:auto;display:flex;gap:2px;border:1px solid var(--line);border-radius:10px;padding:3px}
+.lang button{border:0;background:none;padding:5px 10px;cursor:pointer;font-size:13px;font-weight:700;border-radius:7px}
+.lang button.on{background:var(--text);color:#fff}
 
-/* ---------- map ---------- */
-#map{position:fixed;inset:0;width:100vw;height:100vh;display:block;cursor:grab}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 24px 50px}
+
+/* search */
+.find{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.q{position:relative}
+.q input{width:100%;height:52px;border:1.5px solid var(--text);border-radius:12px;padding:0 16px 0 46px;font-size:16px;outline:none;background:#fff}
+.q input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(15,163,163,.15)}
+.q svg{position:absolute;left:16px;top:16px}
+.q svg *{stroke:var(--text)}
+.list{position:absolute;left:0;right:0;top:58px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(13,43,51,.14);max-height:420px;overflow:auto;z-index:30;display:none}
+.list div{padding:10px 16px;cursor:pointer;display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line)}
+.list div:hover,.list div.on{background:var(--pale)}
+.list b{min-width:60px;font-weight:700;font-variant-numeric:tabular-nums}
+.list span{flex:1}
+.list em{font-style:normal;font-size:13px;white-space:nowrap}
+.seg{display:flex;background:var(--pale);border-radius:12px;padding:4px}
+.seg button{border:0;background:none;height:44px;padding:0 22px;border-radius:9px;cursor:pointer;font-size:15px;font-weight:600}
+.seg button.on{background:var(--accent);color:#fff}
+.seg button:disabled{opacity:.3;cursor:not-allowed}
+.seg.sm{display:inline-flex;padding:3px}.seg.sm button{height:30px;padding:0 14px;font-size:13px}
+
+/* answer */
+.answer{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;margin:24px 0 18px}
+.pname{font-size:20px;font-weight:700;margin-bottom:8px;max-width:760px}
+.pname .code{display:inline-block;background:var(--pale);border-radius:6px;padding:1px 8px;margin-right:8px;font-size:15px;font-variant-numeric:tabular-nums;vertical-align:2px}
+.price{font-size:56px;font-weight:700;letter-spacing:-.02em;line-height:1;color:var(--accent-d);font-variant-numeric:tabular-nums}
+.price small{font-size:18px;font-weight:600;color:var(--text);margin-left:8px;letter-spacing:0}
+.plabel{font-size:14px;margin-top:8px}
+.facts{display:flex;gap:30px}
+.facts div{font-size:13px}
+.facts b{display:block;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* board */
+.board{display:grid;grid-template-columns:1fr 290px;gap:18px}
+.board.full{grid-template-columns:1fr}
+.mapbox{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#FAFCFC;height:520px}
+#map{width:100%;height:100%;display:block;cursor:grab;outline:none}
 #map:active{cursor:grabbing}
 .country{fill:var(--land);stroke:var(--edge);stroke-width:.7px;vector-effect:non-scaling-stroke}
 .country.has{cursor:pointer}
 .country.has:hover{stroke:var(--text);stroke-width:1.2px}
 .country.arm{fill:var(--arm)}
-.country.off{fill:var(--off);stroke:var(--line);stroke-dasharray:3 2}
-.arc{fill:none;stroke:var(--arc);stroke-opacity:var(--arc-op);stroke-linecap:round;vector-effect:non-scaling-stroke;cursor:pointer;filter:var(--glow)}
+.country.off{fill:#F7F9F9;stroke:var(--line);stroke-dasharray:3 2}
+.country.dest{fill:var(--accent2)!important}
+.arc{fill:none;stroke:var(--arc);stroke-opacity:var(--arc-op);stroke-linecap:round;vector-effect:non-scaling-stroke;cursor:pointer}
 .arc:hover,.arc.hi{stroke:var(--accent);stroke-opacity:1}
-.flow{fill:none;stroke:var(--flowdot);stroke-opacity:.95;stroke-linecap:round;vector-effect:non-scaling-stroke;stroke-dasharray:1 14;animation:flow 7s linear infinite;pointer-events:none}
+.flow{fill:none;stroke:#fff;stroke-opacity:.95;stroke-linecap:round;vector-effect:non-scaling-stroke;stroke-dasharray:1 14;animation:flow 7s linear infinite;pointer-events:none}
 .flow.rev{animation-direction:reverse}
 @keyframes flow{to{stroke-dashoffset:-150}}
-.dot{fill:var(--accent);stroke:var(--bg);stroke-width:1.5px;vector-effect:non-scaling-stroke;pointer-events:none}
-.home{fill:var(--bg);stroke:var(--arm);stroke-width:3px;vector-effect:non-scaling-stroke}
+.dot{fill:var(--accent);stroke:#fff;stroke-width:1.5px;vector-effect:non-scaling-stroke;pointer-events:none}
+.home{fill:#fff;stroke:var(--arm);stroke-width:3px;vector-effect:non-scaling-stroke}
 .homepulse{fill:none;stroke:var(--arm);stroke-width:1.5px;vector-effect:non-scaling-stroke;animation:pulse 2.6s ease-out infinite;pointer-events:none}
 @keyframes pulse{from{opacity:.8}to{opacity:0}}
-
-/* ---------- floating UI ---------- */
-.panel{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
-.card{position:fixed;left:20px;top:20px;width:440px;max-height:calc(100vh - 40px);overflow:auto;padding:18px 20px 18px;z-index:10}
-.brand{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;letter-spacing:.02em;margin-bottom:14px}
-.brand .mark{width:22px;height:22px;border-radius:7px;background:var(--accent);display:flex;align-items:center;justify-content:center}
-.brand .mark i{width:8px;height:8px;border-radius:50%;background:var(--accent-ink);display:block}
-.q{position:relative}
-.q input{width:100%;height:48px;border:1px solid var(--line);border-radius:12px;padding:0 14px 0 42px;font-size:15px;outline:none;background:var(--panel-solid)}
-.q input:focus{border-color:var(--accent)}
-.q svg{position:absolute;left:14px;top:15px}
-.q svg *{stroke:var(--soft)}
-.list{position:absolute;left:0;right:0;top:54px;background:var(--panel-solid);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:380px;overflow:auto;z-index:30;display:none}
-.list div{padding:9px 14px;cursor:pointer;display:flex;gap:12px;align-items:baseline;font-size:14px;border-bottom:1px solid var(--line)}
-.list div:hover,.list div.on{background:var(--hover)}
-.list b{min-width:56px;font-weight:600;font-variant-numeric:tabular-nums}
-.list span{flex:1}
-.list em{font-style:normal;font-size:12px;color:var(--soft);white-space:nowrap}
-.seg{display:flex;background:var(--hover);border-radius:12px;padding:4px;margin-top:10px}
-.seg button{flex:1;border:0;background:none;height:38px;border-radius:9px;cursor:pointer;font-size:14px;font-weight:600;color:var(--soft)}
-.seg button.on{background:var(--accent);color:var(--accent-ink)}
-.seg button:disabled{opacity:.35;cursor:not-allowed}
-.seg.sm{display:inline-flex;margin:0}.seg.sm button{height:30px;padding:0 12px;flex:none;font-size:13px}
-.pname{font-size:13px;color:var(--soft);margin:18px 0 4px}
-.pname b{color:var(--text);font-weight:600}
-.price{font-size:54px;font-weight:700;letter-spacing:-.02em;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
-.price small{font-size:17px;font-weight:600;color:var(--text);margin-left:8px;letter-spacing:0}
-.plabel{font-size:13px;color:var(--soft);margin-top:8px}
-.plabel b{color:var(--text)}
-.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
-.facts div{font-size:11.5px;color:var(--soft)}
-.facts b{display:block;font-size:17px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
-.actions{display:flex;gap:8px;margin-top:16px}
-.mode{display:flex;gap:18px;border-bottom:1px solid var(--line);margin:-2px 0 14px}
-.mode button{border:0;background:none;padding:0 0 9px;cursor:pointer;font-size:14px;font-weight:600;color:var(--soft);border-bottom:2px solid transparent;margin-bottom:-1px}
-.mode button.on{color:var(--text);border-color:var(--accent)}
-.cmpctl{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:10px}
-.cmpctl label{font-size:11.5px;color:var(--soft);display:block;margin-bottom:3px}
-.cmphead{margin-top:16px;font-size:13px;color:var(--soft)}
-.cmphead b{color:var(--text)}
-.cmpbig{display:flex;gap:22px;align-items:flex-end;margin:6px 0 4px}
-.cmpbig .v{font-size:40px;font-weight:700;color:var(--accent);line-height:1;font-variant-numeric:tabular-nums}
-.cmpbig .v small{font-size:14px;color:var(--text);font-weight:600;margin-left:6px}
-.cmpbig .o{font-size:13px;color:var(--soft)}.cmpbig .o b{display:block;font-size:20px;color:var(--text);font-variant-numeric:tabular-nums}
-.rank{margin-top:12px}
-.rank .r{display:grid;grid-template-columns:118px 1fr 52px 60px;gap:8px;align-items:center;font-size:12.5px;padding:3px 0;cursor:default}
-.rank .r .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rank .r .b{height:9px;border-radius:5px;background:var(--soft);opacity:.45}
-.rank .r.arm .b{background:var(--accent);opacity:1}.rank .r.arm .nm,.rank .r.arm .p{color:var(--accent);font-weight:700}
-.rank .r .p{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
-.rank .r .val{text-align:right;color:var(--soft);font-variant-numeric:tabular-nums}
-.rank .r.reg .nm:after{content:" ●";color:var(--accent2);font-size:9px;vertical-align:2px}
-.rank .hdr{font-size:11px;color:var(--soft);display:grid;grid-template-columns:118px 1fr 52px 60px;gap:8px;border-bottom:1px solid var(--line);padding-bottom:4px;margin-bottom:3px}
-.rank .hdr span:nth-child(3),.rank .hdr span:nth-child(4){text-align:right}
-.sortlnk{border:0;background:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600;padding:0}
-.country.rep{cursor:pointer}
-.country.dest{fill:var(--accent2)!important}
-.btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--panel-solid);border-radius:10px;height:38px;cursor:pointer;font-size:13px;font-weight:600}
-.btn:hover{border-color:var(--text)}
-.btn.on{background:var(--text);color:var(--bg);border-color:var(--text)}
-.btn .badge{background:var(--accent);color:var(--accent-ink);border-radius:9px;font-size:11px;padding:1px 7px}
-
-.topright{position:fixed;right:20px;top:20px;display:flex;gap:8px;z-index:10}
-.lang{display:flex;padding:4px;border-radius:12px}
-.lang button{border:0;background:none;padding:6px 10px;cursor:pointer;font-size:13px;font-weight:600;border-radius:8px;color:var(--soft)}
-.lang button.on{background:var(--text);color:var(--bg)}
-.zoom{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:6px;z-index:10}
-.zoom button{width:40px;height:40px;cursor:pointer;font-size:18px;line-height:1;border-radius:12px}
-.legend{position:fixed;right:76px;bottom:20px;padding:10px 14px;font-size:11.5px;display:flex;gap:18px;align-items:flex-end;z-index:9;color:var(--soft)}
+.zoom{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px}
+.zoom button{width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:9px;cursor:pointer;font-size:17px;line-height:1}
+.zoom button:hover{border-color:var(--text)}
+.legend{position:absolute;left:12px;bottom:12px;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;display:flex;gap:18px;align-items:flex-end}
 .legend .ramp{width:120px;height:8px;border-radius:4px;margin:5px 0 3px}
-.legend .ends{display:flex;justify-content:space-between;color:var(--text);font-variant-numeric:tabular-nums}
+.legend .ends{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
 .legend svg{display:block;margin-top:5px}
-.legend line{stroke:var(--arc);stroke-opacity:var(--arc-op)}
-.tip{position:fixed;pointer-events:none;padding:12px 14px;font-size:13px;min-width:210px;opacity:0;transition:opacity .12s;z-index:40}
-.tip h4{margin:0 0 6px;font-size:14px}
-.tip .tp{font-size:26px;font-weight:700;color:var(--accent);line-height:1.1;font-variant-numeric:tabular-nums}
+.legend line{stroke:var(--arc);stroke-opacity:.5}
+.empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:16px;background:rgba(255,255,255,.75)}
+.tip{position:fixed;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(13,43,51,.16);padding:12px 14px;font-size:13px;min-width:210px;opacity:0;transition:opacity .12s;z-index:40}
+.tip h4{margin:0 0 6px;font-size:15px}
+.tip .tp{font-size:26px;font-weight:700;color:var(--accent-d);line-height:1.1;font-variant-numeric:tabular-nums}
 .tip .tp small{font-size:12px;color:var(--text);font-weight:600}
 .tip table{border-collapse:collapse;margin-top:6px;width:100%}
-.tip td{padding:2px 0;color:var(--soft);font-variant-numeric:tabular-nums}
-.tip td+td{text-align:right;padding-left:14px;color:var(--text)}
-.tip .act{margin-top:7px;font-size:12px;color:var(--accent)}
-.empty{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 18px;display:none;z-index:9}
+.tip td{padding:2px 0;font-variant-numeric:tabular-nums}
+.tip td+td{text-align:right;padding-left:14px;font-weight:600}
+.tip .act{margin-top:7px;font-size:12px;color:var(--accent-d);font-weight:600}
 
-/* drawer */
-.drawer{position:fixed;right:20px;top:76px;bottom:110px;width:370px;padding:16px 18px;overflow:auto;z-index:12;transform:translateX(420px);transition:transform .3s ease}
-.drawer.open{transform:none}
-.drawer h3{margin:0 0 8px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
-.drawer h3 button{border:0;background:none;color:var(--accent);cursor:pointer;font-size:13px;font-weight:600;padding:0}
-.fg{border-top:1px solid var(--line);padding:12px 0 14px}
-.fg label.t{display:block;font-size:12.5px;font-weight:600;color:var(--soft);margin-bottom:8px}
+/* filters */
+.filters{border:1px solid var(--line);border-radius:16px;padding:14px 16px;height:520px;overflow:auto}
+.filters h3{margin:0 0 4px;font-size:16px;display:flex;justify-content:space-between;align-items:center}
+.filters h3 button{border:0;background:none;color:var(--accent-d);cursor:pointer;font-size:13px;font-weight:700;padding:0}
+.fg{border-top:1px solid var(--line);padding:12px 0 12px}
+.fg:first-of-type{border-top:0}
+.fg label.t{display:block;font-size:14px;font-weight:700;margin-bottom:8px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.chips button{border:1px solid var(--line);background:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px}
-.chips button.on{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.chips button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px}
+.chips button.on{border-color:var(--accent);background:var(--accent);color:#fff;font-weight:600}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-select{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--panel-solid);font-size:13px}
-.sw{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;margin-bottom:8px;cursor:pointer}
+select{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:#fff;font-size:14px}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;font-weight:700;margin-bottom:8px;cursor:pointer}
 .sw input{display:none}
 .sw i{width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;flex:none;transition:background .2s}
 .sw i:after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
 .sw input:checked+i{background:var(--accent)}
 .sw input:checked+i:after{left:19px}
-.note{font-size:12px;color:var(--soft);line-height:1.45}
-table.ct{width:100%;border-collapse:collapse;font-size:13px}
-.ct th{text-align:left;font-weight:600;color:var(--soft);border-bottom:1px solid var(--line);padding:6px 4px;cursor:pointer;white-space:nowrap;font-size:12px}
-.ct td{border-bottom:1px solid var(--line);padding:6px 4px;font-variant-numeric:tabular-nums;cursor:pointer}
-.ct td.n,.ct th.n{text-align:right}
-.ct tr:hover td{background:var(--hover)}
-.ct tr.off td{opacity:.4;text-decoration:line-through}
-.ct td:first-child{width:18px}
-.ct .ck{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--soft);display:inline-block;vertical-align:-2px}
-.ct tr:not(.off) .ck{background:var(--accent);border-color:var(--accent)}
-.more{margin-top:8px;border:0;background:none;color:var(--accent);cursor:pointer;font-size:13px;font-weight:600;padding:0}
-.foot{font-size:11.5px;color:var(--soft);line-height:1.5;border-top:1px solid var(--line);padding-top:12px;margin-top:6px}
-.foot a{color:var(--accent)}
+.note{font-size:13px;line-height:1.45}
 
-/* bottom sheet */
-.sheet{position:fixed;left:480px;right:20px;bottom:20px;height:310px;padding:14px 18px 10px;z-index:11;transform:translateY(360px);transition:transform .3s ease}
-.sheet.open{transform:none}
-.dr-open .sheet{right:410px;bottom:20px}
-.tshead{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;gap:10px}
-.tshead h3{margin:0;font-size:15px}
-.tshead .x{border:0;background:none;cursor:pointer;font-size:20px;color:var(--soft);padding:0 4px}
-.tsgrid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-.tsgrid h4{margin:6px 0 2px;font-size:12.5px;color:var(--soft);font-weight:600}
-.tsgrid svg{display:block;width:100%;height:210px}
-.tsgrid .bar{fill:var(--soft);opacity:.55}.tsgrid .bar.sel{fill:var(--accent);opacity:1}.tsgrid .bar:hover{opacity:.85}
-.tsgrid .ax text{font-size:11px;fill:var(--soft)}.tsgrid .ax line{stroke:var(--line)}
-.tsnote{font-size:11.5px;color:var(--soft)}
+/* sections below */
+.block{margin-top:26px;border-top:2px solid var(--text);padding-top:14px}
+.bh{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.bh .sub{font-size:13px;margin-top:2px}
+.tsgrid{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.tsgrid h4{margin:4px 0 2px;font-size:14px;font-weight:700}
+.tsgrid svg{display:block;width:100%;height:220px}
+.tsgrid .bar{fill:var(--accent-l)}.tsgrid .bar.sel{fill:var(--accent)}.tsgrid .bar:hover{fill:var(--accent-d)}
+.tsgrid .ax text{font-size:12px;fill:var(--text)}.tsgrid .ax line{stroke:var(--line)}
+table.ct{width:100%;border-collapse:collapse;font-size:14px}
+.ct th{text-align:left;font-weight:700;border-bottom:1.5px solid var(--text);padding:8px 8px;white-space:nowrap}
+.ct th[data-s]{cursor:pointer}
+.ct th[data-s].on{color:var(--accent-d)}
+.ct td{border-bottom:1px solid var(--line);padding:8px 8px;font-variant-numeric:tabular-nums;cursor:pointer}
+.ct td.n,.ct th.n{text-align:right}
+.ct tr:hover td{background:var(--pale)}
+.ct tr.off td{opacity:.4;text-decoration:line-through}
+.ct td:first-child,.ct th:first-child{width:28px;padding-right:0}
+.ct .ck{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--text);display:inline-block;vertical-align:-2px;position:relative}
+.ct tr:not(.off) .ck{background:var(--accent);border-color:var(--accent)}
+.ct tr:not(.off) .ck:after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.ct td.pb{width:34%}
+.ct .bar{display:inline-block;height:9px;background:var(--accent-l);border-radius:5px;vertical-align:middle}
+.ct tr.arm td{font-weight:700;color:var(--accent-d)}
+.ct tr.arm .bar{background:var(--accent)}
+.ct tr.reg td.nm:after{content:" ●";color:var(--accent2);font-size:10px;vertical-align:2px}
+.more{margin-top:10px;border:1.5px solid var(--text);background:#fff;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:14px;font-weight:600}
+
+/* compare */
+.cmptop{margin:22px 0 18px}
+.cmpctl{display:flex;gap:12px;margin:12px 0 16px;flex-wrap:wrap}
+.cmpctl label{font-size:13px;font-weight:700;display:block;margin-bottom:4px}
+.cmpctl select{min-width:220px;height:40px}
+.cmpbig{display:flex;gap:40px;align-items:flex-end;flex-wrap:wrap}
+.cmpbig .lab{font-size:14px;margin-bottom:6px}
+.cmpbig .v{font-size:52px;font-weight:700;color:var(--accent-d);line-height:1;font-variant-numeric:tabular-nums}
+.cmpbig .v small{font-size:17px;color:var(--text);font-weight:600;margin-left:6px}
+.cmpbig .o{font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.cmpbig .o small{font-size:15px;font-weight:600;margin-left:6px}
+.cmpbig .rk{font-size:15px;font-weight:600;padding-bottom:4px}
+.msg{padding:18px 0;font-size:15px}
+
+footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-size:13px;line-height:1.6}
+footer a{color:var(--accent-d);font-weight:600}
+.hide{display:none!important}
 .noanim *{transition:none!important}
-@media(max-width:900px){.card{width:auto;right:20px}.sheet{left:20px}.legend{display:none}.drawer{left:20px;width:auto}}
+@media(max-width:960px){.board{grid-template-columns:1fr}.filters{height:auto}.mapbox{height:420px}.find{grid-template-columns:1fr}.tsgrid{grid-template-columns:1fr}.price{font-size:44px}.top .in{gap:14px}.brand span+span{display:none}}
 </style>
 </head>
 <body>
-<svg id="map"></svg>
-
-<div class="card panel">
+<header class="top"><div class="in">
   <div class="brand"><span class="mark"><i></i></span><span data-t="brand"></span></div>
-  <div class="mode"><button id="mP" class="on" data-t="m_price"></button><button id="mC" data-t="m_cmp"></button></div>
-  <div class="q">
-    <svg width="18" height="18" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="6.5" fill="none" stroke-width="2"/><path d="M13.5 13.5 L18 18" stroke-width="2" stroke-linecap="round"/></svg>
-    <input id="q" autocomplete="off">
-    <div class="list" id="list"></div>
-  </div>
-  <div class="seg"><button id="fX" data-t="export"></button><button id="fM" data-t="import"></button></div>
-  <div id="answer"></div>
-  <div id="cmp" style="display:none"></div>
-  <div class="actions" id="actions">
-    <button class="btn" id="tsbtn"><span data-t="tsbtn"></span></button>
-    <button class="btn" id="fbtn"><span data-t="filters"></span><span class="badge" id="fbadge" style="display:none"></span></button>
-  </div>
-</div>
+  <nav class="mode"><button id="mP" class="on" data-t="m_price"></button><button id="mC" data-t="m_cmp"></button></nav>
+  <div class="lang"><button id="lhy" class="on">ՀԱՅ</button><button id="len">ENG</button></div>
+</div></header>
 
-<div class="topright"><div class="lang panel"><button id="lhy" class="on">ՀԱՅ</button><button id="len">ENG</button></div></div>
+<main class="wrap">
+  <div class="find">
+    <div class="q">
+      <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="6.5" fill="none" stroke-width="2"/><path d="M13.5 13.5 L18 18" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="q" autocomplete="off">
+      <div class="list" id="list"></div>
+    </div>
+    <div class="seg"><button id="fX" data-t="export"></button><button id="fM" data-t="import"></button></div>
+  </div>
 
-<aside class="drawer panel" id="drawer">
-  <h3><span data-t="filters"></span><button id="reset" data-t="reset"></button></h3>
-  <div class="fg">
-    <label class="t" data-t="period"></label>
-    <div class="chips" id="pchips"></div>
-    <div class="two"><select id="from"></select><select id="to"></select></div>
+  <section class="answer" id="answer"></section>
+  <section class="cmptop hide" id="cmptop"></section>
+
+  <div class="board" id="board">
+    <div class="mapbox" id="mapbox">
+      <svg id="map"></svg>
+      <div class="zoom"><button id="zin">+</button><button id="zout">−</button><button id="zfit">⤢</button></div>
+      <div class="legend" id="legend"></div>
+      <div class="empty" id="empty"></div>
+    </div>
+    <aside class="filters" id="filters">
+      <h3><span data-t="filters"></span><button id="reset" data-t="reset"></button></h3>
+      <div class="fg">
+        <label class="t" data-t="period"></label>
+        <div class="chips" id="pchips"></div>
+        <div class="two"><select id="from"></select><select id="to"></select></div>
+      </div>
+      <div class="fg">
+        <label class="sw"><span data-t="outliers"></span><input type="checkbox" id="out" checked><i></i></label>
+        <select id="outk"></select>
+        <div class="note" id="outnote" style="margin-top:6px"></div>
+      </div>
+      <div class="fg">
+        <label class="t" data-t="small"></label>
+        <select id="minkg"></select>
+      </div>
+      <div class="fg note" data-t="exclnote"></div>
+    </aside>
   </div>
-  <div class="fg">
-    <label class="sw"><span data-t="outliers"></span><input type="checkbox" id="out" checked><i></i></label>
-    <select id="outk"></select>
-    <div class="note" id="outnote" style="margin-top:6px"></div>
-  </div>
-  <div class="fg">
-    <label class="t" data-t="small"></label>
-    <select id="minkg"></select>
-  </div>
-  <div class="fg">
-    <label class="t" id="cttitle"></label>
+
+  <section class="block" id="tsblock">
+    <div class="bh"><div><h2 id="tstitle"></h2><div class="sub" data-t="tsnote"></div></div>
+      <div class="seg sm"><button id="tsY" class="on" data-t="yearly"></button><button id="tsM" data-t="monthly"></button></div></div>
+    <div class="tsgrid"><div><h4 data-t="tsval"></h4><svg id="tsv"></svg></div><div><h4 data-t="tsvol"></h4><svg id="tsq"></svg></div></div>
+  </section>
+
+  <section class="block" id="ctblock">
+    <div class="bh"><div><h2 id="cttitle"></h2><div class="sub" data-t="click_hint"></div></div></div>
     <table class="ct" id="ct"></table>
     <button class="more" id="more"></button>
-  </div>
-  <div class="foot" id="foot"></div>
-</aside>
+  </section>
 
-<div class="sheet panel" id="ts">
-  <div class="tshead"><h3 id="tstitle"></h3>
-    <div style="display:flex;gap:8px;align-items:center"><div class="seg sm"><button id="tsY" class="on" data-t="yearly"></button><button id="tsM" data-t="monthly"></button></div><button class="x" id="tsx">×</button></div></div>
-  <div class="tsgrid"><div><h4 data-t="tsval"></h4><svg id="tsv"></svg></div><div><h4 data-t="tsvol"></h4><svg id="tsq"></svg></div></div>
-  <div class="tsnote" data-t="tsnote"></div>
-</div>
+  <section class="block hide" id="cmpblock"></section>
 
-<div class="zoom"><button class="panel" id="zin">+</button><button class="panel" id="zout">−</button><button class="panel" id="zfit">⤢</button></div>
-<div class="legend panel" id="legend"></div>
-<div class="tip panel" id="tip"></div>
-<div class="empty panel" id="empty"></div>
+  <footer id="foot"></footer>
+</main>
+<div class="tip" id="tip"></div>
 
 <script src="vendor/d3.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
 <script>
 const T={
  hy:{brand:"Արտահանման և ներմուծման գներ · Հայաստան",ph:"Ապրանք կամ ԱՏԳ ԱԱ ծածկագիր (օր. 070200)",export:"Արտահանում",import:"Ներմուծում",
-  tsbtn:"Արժեք և ծավալ",m_price:"Գին",m_cmp:"Համեմատել այլ երկրների հետ",dest_X:"Նշանակման երկիր",dest_M:"Ծագման երկիր",world:"Ամբողջ աշխարհ",year:"Տարի",armprice_X:"Հայաստանի արտահանման գինը",armprice_M:"Հայաստանի ներմուծման գինը",others:"Այլ երկրների միջինը",rankof:(r,n)=>r?`Հայաստանը ${r}-րդն է ${n} երկրից (ըստ գնի)`:"Հայաստանը այս ուղղությամբ առևտուր չունի",noarm:"Հայաստան՝ առևտուր չկա",cmploading:"Համեմատության տվյալները դեռ ներբեռնվում են (ամեն օր ավելանում են)։",byvalue:"ըստ արժեքի",byprice:"ըստ գնի",sortby:"Դասավորել",regnote:"● տարածաշրջան · ցուցադրված են խոշորագույն արտահանողները և տարածաշրջանը",regnoteM:"● տարածաշրջան · ցուցադրված են խոշորագույն ներմուծողները և տարածաշրջանը",cmpsrc:y=>`ՄԱԿ Comtrade, տարեկան տվյալներ, ${y}։ Գին = արժեք ÷ քաշ։`,yearly:"Տարեկան",monthly:"Ամսական",tsval:"Արժեք, ԱՄՆ դոլար",tsvol:"Ծավալ, կգ",tstitle:"Վերջին 5 տարին",
-  tsnote:"Գունավոր՝ գնի համար ընտրված ժամանակահատվածը։ * Տարին դեռ ամբողջական չէ։ Կիրառվում են նույն ֆիլտրերը։",partial:"մաս",
+  m_price:"Գին",m_cmp:"Համեմատություն այլ երկրների հետ",
+  dest_X:"Նշանակման երկիր",dest_M:"Ծագման երկիր",world:"Ամբողջ աշխարհ",year:"Տարի",
+  armprice_X:"Հայաստանի արտահանման գինը",armprice_M:"Հայաստանի ներմուծման գինը",others:"Այլ երկրների միջինը",
+  rankof:(r,n)=>r?`Հայաստանը ${r}-րդն է ${n} երկրից՝ ըստ գնի`:"Հայաստանը այս ուղղությամբ առևտուր չունի",noarm:"Հայաստան՝ առևտուր չկա",
+  cmploading:"Այս ապրանքի համեմատության տվյալները դեռ ներբեռնվում են։ Ամեն գիշեր ավելանում են նոր տարիներ։",
+  cmptitle_X:"Արտահանողները՝ ըստ գնի",cmptitle_M:"Ներմուծողները՝ ըստ գնի",
+  regnote:"● Տարածաշրջանի երկիր։ Ցույց են տրված խոշորագույն արտահանողները և տարածաշրջանը։",regnoteM:"● Տարածաշրջանի երկիր։ Ցույց են տրված խոշորագույն ներմուծողները և տարածաշրջանը։",
+  cmpsrc:y=>`Աղբյուր՝ ՄԱԿ Comtrade, տարեկան տվյալներ, ${y}։ Գին = արժեք ÷ քաշ։`,
+  yearly:"Տարեկան",monthly:"Ամսական",tsval:"Արժեք, ԱՄՆ դոլար",tsvol:"Ծավալ, կգ",tstitle:"Արժեքը և ծավալը վերջին 5 տարում",
+  tsnote:"Մուգ գույնով՝ գնի համար ընտրված ժամանակահատվածը։ * Տարին դեռ ամբողջական չէ։",
   avg_X:"Միջին արտահանման գին",avg_M:"Միջին ներմուծման գին",perkg:"$/կգ",perunit:u=>`$/${u}`,
-  value:"Արժեք, $",qty:"Քանակ, կգ",ncountries:"Երկրներ",months:"Ամիսներ",
+  value:"Արժեք, $",qty:"Քաշ, կգ",ncountries:"Երկրներ",months:"Ամիսներ",
   filters:"Ֆիլտրեր",reset:"Վերականգնել",period:"Ժամանակահատված",
   p3:"3 ամիս",p12:"12 ամիս",p36:"3 տարի",pall:"Ամբողջը",outliers:"Բացառել ծայրահեղ գները",
-  k:k=>({3:'Խիստ',5:'Միջին',10:'Մեղմ'})[k]+` (×${k} միջնարժեքից)`,outnote:n=>n?`Բացառվել է ${n} ամսական գրառում`:"Ծայրահեղ գներ չեն գտնվել",
-  small:"Անտեսել փոքր առաքումները",none:"Չանտեսել",below:x=>`${x}-ից պակաս ամսական`,
-  ct_X:"Նշանակման երկրներ",ct_M:"Ծագման երկրներ",country:"Երկիր",price:"$/կգ",share:"Բաժին",
+  k:k=>({3:'Խիստ',5:'Միջին',10:'Մեղմ'})[k]+` (միջնարժեքից ×${k})`,outnote:n=>n?`Բացառվել է ${n} ամսական գրառում։`:"Ծայրահեղ գներ չկան։",
+  small:"Անտեսել փոքր առաքումները",none:"Չանտեսել",below:x=>`Ամսական ${x}-ից պակաս`,
+  exclnote:"Երկիրը բացառելու համար սեղմեք այն քարտեզի վրա կամ աղյուսակում։",
+  ct_X:"Նշանակման երկրները",ct_M:"Ծագման երկրները",click_hint:"Սեղմեք տողը՝ երկիրը հաշվարկից բացառելու կամ վերադարձնելու համար։",
+  country:"Երկիր",price:"$/կգ",share:"Բաժին",
   showall:n=>`Ցույց տալ բոլորը (${n})`,showless:"Ցույց տալ քիչ",
-  click_off:"Սեղմեք՝ բացառելու համար",click_on:"Բացառված է · սեղմեք՝ վերադարձնելու",nodata:"Այս ֆիլտրերով տվյալներ չկան",
-  noprice:"Քանակի տվյալներ չկան",width:"Գիծ՝ արժեք",
+  click_off:"Սեղմեք՝ բացառելու համար",click_on:"Բացառված է։ Սեղմեք՝ վերադարձնելու համար",nodata:"Այս ֆիլտրերով տվյալներ չկան",
+  noprice:"Քաշի տվյալներ չկան",width:"Գծի հաստությունը՝ արժեք",
   per:(a,b)=>`${a} – ${b}`,
-  foot:(f,l,b)=>`Միջին գին = ընդհանուր արժեք ÷ ընդհանուր քանակ։ Աղբյուր՝ ՄԱԿ Comtrade, Հայաստանի հաշվետվությամբ ամսական տվյալներ (${f} – ${l})։ Թարմացում՝ ամեն ամիս, վերջինը՝ ${b}։ Երկրների անվանումները՝ Արմստատ և Unicode CLDR։ <a href="data/armenia_trade_prices.xlsx">Excel</a> · <a href="data/armenia_trade_prices.csv">CSV</a>`,
-  vfmt:x=>x>=1e9?(x/1e9).toLocaleString('hy-AM',{maximumFractionDigits:2})+" մլրդ":x>=1e6?(x/1e6).toLocaleString('hy-AM',{maximumFractionDigits:1})+" մլն":x>=1e3?(x/1e3).toLocaleString('hy-AM',{maximumFractionDigits:0})+" հազ.":String(Math.round(x)),
+  foot:(f,l,b)=>`Միջին գին = ընդհանուր արժեք ÷ ընդհանուր քաշ։ Աղբյուր՝ ՄԱԿ Comtrade, Հայաստանի հաշվետվությամբ ամսական տվյալներ (${f} – ${l})։ Թարմացվում է ամեն ամիս, վերջին անգամ՝ ${b}։ Ապրանքների անվանումները՝ ՀՀ ՊԵԿ, ԱՏԳ ԱԱ։ Երկրների անվանումները՝ Արմստատ և Unicode CLDR։ Ներբեռնել՝ <a href="data/armenia_trade_prices.xlsx">Excel</a> · <a href="data/armenia_trade_prices.csv">CSV</a>`,
+  vfmt:x=>x>=1e9?(x/1e9).toLocaleString('hy-AM',{maximumFractionDigits:2})+" մլրդ":x>=1e6?(x/1e6).toLocaleString('hy-AM',{maximumFractionDigits:1})+" մլն":x>=1e3?(x/1e3).toLocaleString('hy-AM',{maximumFractionDigits:0})+" հզր":String(Math.round(x)),
   loc:"hy-AM",units:{l:"լ",u:"հատ","2u":"զույգ",m:"մ",m2:"մ²",m3:"մ³","m²":"մ²","m³":"մ³",carat:"կարատ",kWh:"կՎտժ","1000u":"1000 հատ","12u":"դյուժին",g:"գ"}},
  en:{brand:"Export and import prices · Armenia",ph:"Product or HS code (e.g. 070200 or tomatoes)",export:"Export",import:"Import",
-  tsbtn:"Value and volume",m_price:"Price",m_cmp:"Compare with other countries",dest_X:"Destination",dest_M:"Origin",world:"Whole world",year:"Year",armprice_X:"Armenia\u2019s export price",armprice_M:"Armenia\u2019s import price",others:"Average of others",rankof:(r,n)=>r?`Armenia ranks ${r} of ${n} by price`:"Armenia has no trade on this route",noarm:"Armenia: no trade",cmploading:"Comparison data is still downloading (more is added every day).",byvalue:"by value",byprice:"by price",sortby:"Sort",regnote:"● region · showing the largest exporters and the region",regnoteM:"● region · showing the largest importers and the region",cmpsrc:y=>`UN Comtrade, yearly data, ${y}. Price = value ÷ weight.`,yearly:"Yearly",monthly:"Monthly",tsval:"Value, USD",tsvol:"Volume, kg",tstitle:"Last 5 years",
-  tsnote:"Coloured: the period chosen for the price. * Year not complete yet. The same filters apply.",partial:"part",
+  m_price:"Price",m_cmp:"Compare with other countries",
+  dest_X:"Destination",dest_M:"Origin",world:"Whole world",year:"Year",
+  armprice_X:"Armenia’s export price",armprice_M:"Armenia’s import price",others:"Average of other countries",
+  rankof:(r,n)=>r?`Armenia ranks ${r} of ${n} by price`:"Armenia has no trade on this route",noarm:"Armenia: no trade",
+  cmploading:"Comparison data for this product is still downloading. New years are added every night.",
+  cmptitle_X:"Exporters by price",cmptitle_M:"Importers by price",
+  regnote:"● Country in the region. Showing the largest exporters and the region.",regnoteM:"● Country in the region. Showing the largest importers and the region.",
+  cmpsrc:y=>`Source: UN Comtrade, yearly data, ${y}. Price = value ÷ weight.`,
+  yearly:"Yearly",monthly:"Monthly",tsval:"Value, USD",tsvol:"Volume, kg",tstitle:"Value and volume over the last 5 years",
+  tsnote:"Dark colour: the period chosen for the price. * Year not complete yet.",
   avg_X:"Average export price",avg_M:"Average import price",perkg:"$/kg",perunit:u=>`$/${u}`,
-  value:"Value, $",qty:"Quantity, kg",ncountries:"Countries",months:"Months",
+  value:"Value, $",qty:"Weight, kg",ncountries:"Countries",months:"Months",
   filters:"Filters",reset:"Reset",period:"Period",
   p3:"3 months",p12:"12 months",p36:"3 years",pall:"All",outliers:"Remove extreme prices",
-  k:k=>({3:'Strict',5:'Medium',10:'Loose'})[k]+` (×${k} from median)`,outnote:n=>n?`${n} monthly records removed`:"No extreme prices found",
+  k:k=>({3:'Strict',5:'Medium',10:'Loose'})[k]+` (×${k} from median)`,outnote:n=>n?`${n} monthly records removed.`:"No extreme prices.",
   small:"Ignore small shipments",none:"Keep all",below:x=>`Below ${x} a month`,
-  ct_X:"Destination countries",ct_M:"Countries of origin",country:"Country",price:"$/kg",share:"Share",
+  exclnote:"To exclude a country, click it on the map or in the table.",
+  ct_X:"Destination countries",ct_M:"Countries of origin",click_hint:"Click a row to exclude the country from the price, or to add it back.",
+  country:"Country",price:"$/kg",share:"Share",
   showall:n=>`Show all (${n})`,showless:"Show fewer",
-  click_off:"Click to exclude",click_on:"Excluded · click to include",nodata:"No data with these filters",
-  noprice:"No quantity reported",width:"Line: value",
+  click_off:"Click to exclude",click_on:"Excluded. Click to add back",nodata:"No data with these filters",
+  noprice:"No weight reported",width:"Line width: value",
   per:(a,b)=>`${a} – ${b}`,
-  foot:(f,l,b)=>`Average price = total value ÷ total quantity. Source: UN Comtrade, monthly data reported by Armenia (${f} – ${l}). Updated monthly, last ${b}. Country names: Armstat and Unicode CLDR. <a href="data/armenia_trade_prices.xlsx">Excel</a> · <a href="data/armenia_trade_prices.csv">CSV</a>`,
+  foot:(f,l,b)=>`Average price = total value ÷ total weight. Source: UN Comtrade, monthly data reported by Armenia (${f} – ${l}). Updated every month, last on ${b}. Armenian product names: State Revenue Committee of Armenia (HS nomenclature). Country names: Armstat and Unicode CLDR. Download: <a href="data/armenia_trade_prices.xlsx">Excel</a> · <a href="data/armenia_trade_prices.csv">CSV</a>`,
   vfmt:x=>x>=1e9?(x/1e9).toFixed(2)+" bn":x>=1e6?(x/1e6).toFixed(1)+" m":x>=1e3?(x/1e3).toFixed(0)+" k":String(Math.round(x)),
   loc:"en-GB",units:{l:"litre",u:"unit","2u":"pair",m:"metre",m2:"m²",m3:"m³","m²":"m²","m³":"m³",carat:"carat",kWh:"kWh","1000u":"1,000 units","12u":"dozen",g:"gram"}}
 };
@@ -348,13 +301,14 @@ const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim
 const YEREVAN=[44.51,40.18];
 let L=(()=>{try{return localStorage.getItem('tp_lang')||'hy'}catch(e){return 'hy'}})();
 let P=[],META=null,PART=new Map(),WORLD=null,rec=null,flow='X',from=0,to=0,excluded=new Set(),outOn=true,outK=5,minKg=0,showAll=false,sortKey='v';
+let mode='price',CMP=null,dest=0,cyear=null,csort='v',tsMode='Y',R=null;
 const $=id=>document.getElementById(id);
 const t=k=>T[L][k];
 const fmtP=x=>x==null||!isFinite(x)?'–':x.toLocaleString(t('loc'),{minimumFractionDigits:x>=100?0:2,maximumFractionDigits:x>=100?0:(x>=1?2:3)});
 const MHY=['հնվ','փտվ','մրտ','ապր','մյս','հնս','հլս','օգս','սեպ','հոկ','նոյ','դեկ'],MEN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const mname=i=>{const k=(+META.first.slice(0,4))*12+(+META.first.slice(4))-1+i;return (L==='hy'?MHY:MEN)[k%12]+' '+Math.floor(k/12)};
 const pname=c=>{const p=PART.get(c);return p?(L==='hy'?p.hy:p.en):String(c)};
-const prodName=p=>L==='hy'&&p.hy?p.hy:p.en;
+const prodName=p=>L==='hy'?(p.hy||`ԱՏԳ ԱԱ ${p.hs}`):p.en;
 const NOCACHE='?t='+Math.floor(Date.now()/36e5);
 
 /* ---------- load ---------- */
@@ -368,6 +322,7 @@ Promise.all([fetch('data/products.json'+NOCACHE).then(r=>r.json()),fetch('data/p
   const start=P.find(p=>p.hs===h[0])||P.find(p=>p.hs==='220820')||P[0];
   if(h[1]==='M'||h[1]==='X')flow=h[1];
   if(h[2]&&/^\d+-\d+$/.test(h[2])){[from,to]=h[2].split('-').map(Number)}else{to=maxM();from=Math.max(0,to-11)}
+  if(new URLSearchParams(location.search).get('mode')==='cmp')mode='cmp';
   load(start.hs);
 });
 const maxM=()=>monthIdx(META.latest);
@@ -410,9 +365,7 @@ function load(hs){
   $('list').style.display='none';
   CMP=null;fetch(`data/c/${hs}.json?v=${META.built}`).then(r=>r.ok?r.json():null).catch(()=>null).then(c=>{CMP=c;if(mode==='cmp'&&rec&&rec.hs===hs)render(true)});
   fetch(`data/p/${hs}.json?v=${META.built}`).then(r=>r.json()).then(r=>{rec=r;excluded.clear();showAll=false;
-    if(!rec.f[flow])flow=rec.f.X?'X':'M';$('q').value=`${rec.hs} · ${prodName(rec)}`;$('q').blur();render(true);
-    const sp=new URLSearchParams(location.search);
-    if(sp.get('mode')==='cmp'&&mode!=='cmp')setMode('cmp');if(!tsOpen&&sp.get('ts')==='1')openTS(true);if(!drOpen&&sp.get('filters')==='1')openDrawer(true)});
+    if(!rec.f[flow])flow=rec.f.X?'X':'M';$('q').value=`${rec.hs} · ${prodName(rec)}`;$('q').blur();setMode(mode)});
 }
 
 /* ---------- calculation ---------- */
@@ -437,38 +390,38 @@ function compute(){
   return {tot,parts:[...parts.values()].sort((a,b)=>b.v-a.v),removed:c.removed,small:c.small,unit:F.u};
 }
 
-/* ---------- render ---------- */
-let R=null;
-let mode='price',CMP=null,dest=0,cyear=null,csort='v';
+/* ---------- mode and render ---------- */
 $('mP').onclick=()=>setMode('price');$('mC').onclick=()=>setMode('cmp');
-function setMode(m){mode=m;$('mP').classList.toggle('on',m==='price');$('mC').classList.toggle('on',m==='cmp');
-  $('answer').style.display=m==='price'?'block':'none';$('cmp').style.display=m==='cmp'?'block':'none';$('actions').style.display=m==='price'?'flex':'none';
-  if(m==='cmp'){openTS(false);openDrawer(false)}render(true)}
+function setMode(m){
+  mode=m;const c=m==='cmp';
+  $('mP').classList.toggle('on',!c);$('mC').classList.toggle('on',c);
+  ['answer','filters','tsblock','ctblock'].forEach(id=>$(id).classList.toggle('hide',c));
+  ['cmptop','cmpblock'].forEach(id=>$(id).classList.toggle('hide',!c));
+  $('board').classList.toggle('full',c);
+  const sp=new URLSearchParams(location.search);if(c)sp.set('mode','cmp');else sp.delete('mode');
+  const qs=sp.toString();history.replaceState(null,'',location.pathname+(qs?'?'+qs:'')+location.hash);
+  resizeMap();render(true);
+}
 function render(fit){
   if(!rec)return;
-  if(mode==='cmp'){$('fX').disabled=!rec.f.X;$('fM').disabled=!rec.f.M;$('fX').classList.toggle('on',flow==='X');$('fM').classList.toggle('on',flow==='M');renderCmp(fit);return}
   $('fX').disabled=!rec.f.X;$('fM').disabled=!rec.f.M;$('fX').classList.toggle('on',flow==='X');$('fM').classList.toggle('on',flow==='M');
+  $('foot').innerHTML=t('foot')(mname(0),mname(maxM()),META.built);
+  if(mode==='cmp'){renderCmp(fit);return}
   history.replaceState(null,'',location.pathname+location.search+`#${rec.hs}/${flow}/${from}-${to}`);
   syncFilters();
   R=compute();if(!R)return;
   const {tot,unit}=R, uname=unit&&T[L].units[unit]?T[L].units[unit]:unit;
-  $('answer').innerHTML=`
-      <div class="pname"><b>${rec.hs}</b> · ${prodName(rec)}</div>
+  $('answer').innerHTML=`<div>
+      <div class="pname"><span class="code">${rec.hs}</span>${prodName(rec)}</div>
       <div class="price">${fmtP(tot.pkg)}<small>${t('perkg')}</small></div>
-      <div class="plabel">${t('avg_'+flow)} · ${t('per')(mname(from),mname(to))}${tot.pq?` · <b>${fmtP(tot.pq)}</b> ${t('perunit')(uname)}`:''}</div>
+      <div class="plabel">${t('avg_'+flow)} · ${t('per')(mname(from),mname(to))}${tot.pq?` · <b>${fmtP(tot.pq)}</b> ${t('perunit')(uname)}`:''}</div></div>
       <div class="facts"><div><b>${t('vfmt')(tot.v)}</b>${t('value')}</div><div><b>${t('vfmt')(tot.kg)}</b>${t('qty')}</div><div><b>${tot.n}</b>${t('ncountries')}</div><div><b>${tot.ms.size}</b>${t('months')}</div></div>`;
   $('outnote').textContent=outOn?t('outnote')(R.removed):'';
-  const active=excluded.size+(minKg>0?1:0)+(!outOn||outK!==5?1:0)+((to!==maxM()||to-from!==11)?1:0);
-  $('fbadge').style.display=active?'inline':'none';$('fbadge').textContent=active;
   $('cttitle').textContent=t('ct_'+flow);
-  drawMap(fit);drawTable();if(tsOpen)drawTS();
-  $('foot').innerHTML=t('foot')(mname(0),mname(maxM()),META.built);
+  drawMap(fit);drawTable();drawTS();
 }
 
-/* ---------- drawer and filters ---------- */
-let drOpen=false;
-function openDrawer(v){drOpen=v;document.body.classList.toggle('dr-open',v);if(tsOpen){drawTS();setTimeout(drawTS,320)}$('drawer').classList.toggle('open',v);$('fbtn').classList.toggle('on',v)}
-$('fbtn').onclick=()=>openDrawer(!drOpen);
+/* ---------- filters ---------- */
 function initFilters(){
   ['from','to'].forEach(id=>$(id).onchange=e=>{const v=+e.target.value;if(id==='from'){from=Math.min(v,to)}else{to=Math.max(v,from)}render()});
   $('out').onchange=e=>{outOn=e.target.checked;render()};
@@ -491,21 +444,21 @@ function syncFilters(){
   const span=to-from+1;$('pchips').querySelectorAll('button').forEach(b=>{const n=+b.dataset.n;b.classList.toggle('on',to===maxM()&&(n?span===n:from===0))});
 }
 function toggle(c){excluded.has(c)?excluded.delete(c):excluded.add(c);render()}
+
+/* ---------- country table ---------- */
 function drawTable(){
   const tot=R.tot.v||1;
   const rows=[...R.parts].sort((a,b)=>sortKey==='p'?((b.pkg||0)-(a.pkg||0)):(b.v-a.v));
-  const show=showAll?rows:rows.slice(0,12);
-  $('ct').innerHTML=`<tr><th></th><th>${t('country')}</th><th class="n" data-s="p">${t('price')}</th><th class="n" data-s="v">${t('value')}</th><th class="n">${t('share')}</th></tr>`+
-    show.map(a=>`<tr class="${excluded.has(a.c)?'off':''}" data-c="${a.c}"><td><span class="ck"></span></td><td>${pname(a.c)}</td><td class="n"><b>${fmtP(a.pkg)}</b></td><td class="n">${t('vfmt')(a.v)}</td><td class="n">${excluded.has(a.c)?'–':(100*a.v/tot).toFixed(1)+'%'}</td></tr>`).join('');
+  const show=showAll?rows:rows.slice(0,15);
+  const maxp=d3.max(rows.filter(a=>!excluded.has(a.c)),a=>a.pkg||0)||1;
+  $('ct').innerHTML=`<tr><th></th><th>${t('country')}</th><th class="n ${sortKey==='p'?'on':''}" data-s="p">${t('price')} ↓</th><th></th><th class="n ${sortKey==='v'?'on':''}" data-s="v">${t('value')} ↓</th><th class="n">${t('qty')}</th><th class="n">${t('share')}</th></tr>`+
+    show.map(a=>`<tr class="${excluded.has(a.c)?'off':''}" data-c="${a.c}"><td><span class="ck"></span></td><td>${pname(a.c)}</td><td class="n"><b>${fmtP(a.pkg)}</b></td><td class="pb"><span class="bar" style="width:${a.pkg?Math.max(1,100*Math.min(a.pkg,maxp)/maxp).toFixed(1):0}%"></span></td><td class="n">${t('vfmt')(a.v)}</td><td class="n">${t('vfmt')(a.kg)}</td><td class="n">${excluded.has(a.c)?'–':(100*a.v/tot).toFixed(1)+'%'}</td></tr>`).join('');
   $('ct').querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{sortKey=th.dataset.s;drawTable()});
   $('ct').querySelectorAll('tr[data-c]').forEach(tr=>tr.onclick=()=>toggle(+tr.dataset.c));
-  $('more').style.display=rows.length>12?'inline-block':'none';$('more').textContent=showAll?t('showless'):t('showall')(rows.length);
+  $('more').style.display=rows.length>15?'inline-block':'none';$('more').textContent=showAll?t('showless'):t('showall')(rows.length);
 }
 
 /* ---------- value and volume over time ---------- */
-let tsOpen=false,tsMode='Y';
-function openTS(v){tsOpen=v;$('ts').classList.toggle('open',v);$('tsbtn').classList.toggle('on',v);if(v)drawTS()}
-$('tsbtn').onclick=()=>openTS(!tsOpen);$('tsx').onclick=()=>openTS(false);
 $('tsY').onclick=()=>{tsMode='Y';drawTS()};$('tsM').onclick=()=>{tsMode='M';drawTS()};
 function drawTS(){
   $('tsY').classList.toggle('on',tsMode==='Y');$('tsM').classList.toggle('on',tsMode==='M');$('tstitle').textContent=t('tstitle');
@@ -525,7 +478,7 @@ function drawTS(){
   bars('#tsv',bins,'v');bars('#tsq',bins,'kg');
 }
 function bars(sel,bins,key){
-  const el=d3.select(sel),w=el.node().getBoundingClientRect().width||500,h=210,m={l:56,r:6,t:8,b:26};
+  const el=d3.select(sel),w=el.node().getBoundingClientRect().width||500,h=220,m={l:58,r:6,t:8,b:26};
   el.attr('viewBox',`0 0 ${w} ${h}`).selectAll('*').remove();
   const x=d3.scaleBand().domain(bins.map(b=>b.key)).range([m.l,w-m.r]).padding(bins.length>20?.18:.32);
   const y=d3.scaleLinear().domain([0,d3.max(bins,b=>b[key])||1]).nice().range([h-m.b,m.t]);
@@ -540,8 +493,10 @@ function bars(sel,bins,key){
 /* ---------- compare with other countries ---------- */
 const REGION=new Set([268,31,792,364,398,860,417,112,498,804]);
 function renderCmp(fit){
-  const box=$('cmp');
-  if(!CMP||!CMP.f||!CMP.f[flow]){box.innerHTML=`<div class="cmphead" style="margin-top:14px">${t('cmploading')}</div>`;clearCmpMap();return}
+  history.replaceState(null,'',location.pathname+location.search+`#${rec.hs}/${flow}`);
+  const top=$('cmptop'),blk=$('cmpblock');
+  const head=`<div class="pname"><span class="code">${rec.hs}</span>${prodName(rec)}</div>`;
+  if(!CMP||!CMP.f||!CMP.f[flow]){top.innerHTML=head+`<div class="msg">${t('cmploading')}</div>`;blk.innerHTML='';clearCmpMap();return}
   const rows=CMP.f[flow], years=CMP.years;
   if(!cyear||!years.includes(cyear))cyear=years[years.length-1];
   const dests=[...new Set(rows.map(r=>r[2]))];
@@ -556,27 +511,26 @@ function renderCmp(fit){
   const arm=list.find(a=>a.c===51);
   const others=list.filter(a=>a.c!==51);const avgO=d3.sum(others,a=>a.v)/(d3.sum(others,a=>a.kg)||1);
   const byP=[...list].sort((a,b)=>b.p-a.p);const rank=arm?byP.findIndex(a=>a.c===51)+1:0;
-  const top=[...list].sort((a,b)=>b.v-a.v);
-  let show=top.slice(0,12);list.forEach(a=>{if((REGION.has(a.c)||a.c===51)&&!show.includes(a))show.push(a)});
+  let show=[...list].sort((a,b)=>b.v-a.v).slice(0,15);list.forEach(a=>{if((REGION.has(a.c)||a.c===51)&&!show.includes(a))show.push(a)});
   show.sort(csort==='p'?(a,b)=>b.p-a.p:(a,b)=>b.v-a.v);
   const maxp=d3.max(show,a=>a.p)||1;
   const dname=c=>c===0?t('world'):pname(c);
-  box.innerHTML=`<div class="cmpctl"><div><label>${t('dest_'+flow)}</label><select id="cdest">${dlist.map(d=>`<option value="${d}" ${d===dest?'selected':''}>${dname(d)}</option>`).join('')}</select></div>
+  top.innerHTML=head+`<div class="cmpctl"><div><label>${t('dest_'+flow)}</label><select id="cdest">${dlist.map(d=>`<option value="${d}" ${d===dest?'selected':''}>${dname(d)}</option>`).join('')}</select></div>
      <div><label>${t('year')}</label><select id="cyear">${years.slice().reverse().map(y=>`<option ${y===cyear?'selected':''}>${y}</option>`).join('')}</select></div></div>
-   <div class="cmphead"><b>${rec.hs}</b> · ${prodName(rec)} · ${dname(dest)} · ${cyear}</div>
-   <div class="cmpbig"><div><div class="o" style="margin-bottom:4px">${t('armprice_'+flow)}</div><div class="v">${arm?fmtP(arm.p):'–'}<small>${t('perkg')}</small></div></div>
-     <div class="o"><b>${fmtP(avgO)}</b>${t('others')}</div></div>
-   <div class="o" style="font-size:12.5px;color:var(--soft)">${t('rankof')(rank,list.length)}</div>
-   <div class="rank"><div class="hdr"><span>${t('country')}</span><span>${t('sortby')}: <button class="sortlnk" id="csort">${csort==='p'?t('byprice'):t('byvalue')}</button></span><span>${t('perkg')}</span><span>${t('value')}</span></div>
-     ${show.map(a=>`<div class="r ${a.c===51?'arm':''} ${REGION.has(a.c)?'reg':''}" data-c="${a.c}"><span class="nm">${pname(a.c)}</span><span><span class="b" style="display:block;width:${(100*a.p/maxp).toFixed(1)}%"></span></span><span class="p">${fmtP(a.p)}</span><span class="val">${t('vfmt')(a.v)}</span></div>`).join('')}
-     ${arm?'':`<div class="r arm"><span class="nm">${t('noarm')}</span></div>`}</div>
-   <div class="note" style="margin-top:8px">${flow==='X'?t('regnote'):t('regnoteM')}<br>${t('cmpsrc')(cyear)}</div>`;
+   <div class="cmpbig"><div><div class="lab">${t('armprice_'+flow)} · ${dname(dest)} · ${cyear}</div><div class="v">${arm?fmtP(arm.p):'–'}<small>${t('perkg')}</small></div></div>
+     <div><div class="lab">${t('others')}</div><div class="o">${fmtP(avgO)}<small>${t('perkg')}</small></div></div>
+     <div class="rk">${t('rankof')(rank,list.length)}</div></div>`;
+  blk.innerHTML=`<div class="bh"><div><h2>${t('cmptitle_'+flow)} · ${dname(dest)} · ${cyear}</h2><div class="sub">${flow==='X'?t('regnote'):t('regnoteM')}</div></div></div>
+   <table class="ct"><tr><th>${t('country')}</th><th class="n ${csort==='p'?'on':''}" data-s="p">${t('price')} ↓</th><th></th><th class="n ${csort==='v'?'on':''}" data-s="v">${t('value')} ↓</th><th class="n">${t('qty')}</th></tr>
+   ${show.map(a=>`<tr class="${a.c===51?'arm':''} ${REGION.has(a.c)?'reg':''}" data-c="${a.c}"><td class="nm">${pname(a.c)}</td><td class="n"><b>${fmtP(a.p)}</b></td><td class="pb"><span class="bar" style="width:${Math.max(1,100*a.p/maxp).toFixed(1)}%"></span></td><td class="n">${t('vfmt')(a.v)}</td><td class="n">${t('vfmt')(a.kg)}</td></tr>`).join('')}
+   ${arm?'':`<tr class="arm"><td colspan="5">${t('noarm')}</td></tr>`}</table>
+   <div class="note" style="margin-top:10px">${t('cmpsrc')(cyear)}</div>`;
   $('cdest').onchange=e=>{dest=+e.target.value;render(true)};$('cyear').onchange=e=>{cyear=+e.target.value;render()};
-  $('csort').onclick=()=>{csort=csort==='p'?'v':'p';render()};
-  box.querySelectorAll('.r[data-c]').forEach(el=>{el.onmouseenter=()=>hiRep(+el.dataset.c,true);el.onmouseleave=()=>hiRep(+el.dataset.c,false)});
+  blk.querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{csort=th.dataset.s;render()});
+  blk.querySelectorAll('tr[data-c]').forEach(el=>{el.style.cursor='default';el.onmouseenter=()=>hiRep(+el.dataset.c,true);el.onmouseleave=()=>hiRep(+el.dataset.c,false)});
   drawCmpMap(list,dest,fit);
 }
-function clearCmpMap(){gArcs.selectAll('*').remove();gDots.selectAll('.dot').remove();gLand.selectAll('path').classed('has',false).classed('off',false).classed('dest',false).style('fill',null).each(d=>{d.__a=null;d.__r=null})}
+function clearCmpMap(){gArcs.selectAll('*').remove();gDots.selectAll('.dot').remove();$('legend').innerHTML='';gLand.selectAll('path').classed('has',false).classed('off',false).classed('dest',false).style('fill',null).each(d=>{d.__a=null;d.__r=null})}
 function hiRep(c,on){gArcs.selectAll('path.arc').filter(a=>a.c===c).classed('hi',on)}
 function drawCmpMap(list,dest,fit){
   const dp=dest===0?null:PART.get(dest);
@@ -587,7 +541,7 @@ function drawCmpMap(list,dest,fit){
   gLand.selectAll('path').each(function(d){const a=byNum.get(d.id);d.__a=null;d.__r=a||null;const s=d3.select(this);
     const isDest=dp&&dp.n===d.id;s.classed('has',!!a).classed('off',false).classed('dest',!!isDest).classed('arm',d.id==='051');
     s.style('fill',d.id==='051'||isDest?null:(a?ramp(a.p):null))});
-  gLand.selectAll('path').on('mousemove',(e,d)=>{if(d.__r)showCmpTip(e,d.__r);else if(d.__a)showTip(e,d.__a);else hideTip()});
+  gLand.selectAll('path').on('mousemove',(e,d)=>{if(d.__r)showCmpTip(e,d.__r);else hideTip()}).on('click',null);
   const maxv=d3.max(list,a=>a.v)||1, w=d3.scaleSqrt().domain([0,maxv]).range([.8,10]), rr=d3.scaleSqrt().domain([0,maxv]).range([2,9]);
   const pts=list.map(a=>{const p=PART.get(a.c);return p&&p.lat!=null?{a,xy:proj([p.lon,p.lat])}:null}).filter(Boolean);
   const arcs=dp?pts:[];const [dx0,dy0]=dp?proj([dp.lon,dp.lat]):[0,0];
@@ -600,25 +554,19 @@ function drawCmpMap(list,dest,fit){
   gDots.select('.homepulse').raise();gDots.select('.home').raise();scaleDots();
   $('legend').innerHTML=`<div><div>${t('price')}</div><div class="ramp" style="background:linear-gradient(90deg,${css('--ramp0')},${css('--ramp1')})"></div><div class="ends"><span>${fmtP(lo)}</span><span>${fmtP(hi_)}</span></div></div>`;
   $('empty').style.display='none';
-  if(fit){const P2=[...pts.sort((a,b)=>b.a.v-a.a.v).slice(0,10).map(o=>o.xy),proj(YEREVAN)];if(dp)P2.push([dx0,dy0]);fitPts(P2)}
+  if(fit){const P2=[...pts.sort((a,b)=>b.a.v-a.a.v).slice(0,10).map(o=>o.xy),proj(YEREVAN)];if(dp)P2.push([dx0,dy0]);fitPts(P2,true)}
 }
 function showCmpTip(e,a){
-  const tip=$('tip');tip.innerHTML=`<h4>${pname(a.c)}</h4><div class="tp">${fmtP(a.p)} <small>${t('perkg')}</small></div><table><tr><td>${t('value')}</td><td>${t('vfmt')(a.v)}</td></tr><tr><td>${t('qty')}</td><td>${t('vfmt')(a.kg)}</td></tr></table>`;
-  let x=e.clientX+16,y=e.clientY+16;if(x+240>innerWidth)x-=260;if(y+160>innerHeight)y-=170;tip.style.left=x+'px';tip.style.top=y+'px';tip.style.opacity=1;
-}
-function fitPts(pts){
-  const [x0,y0,x1,y1]=[d3.min(pts,p=>p[0]),d3.min(pts,p=>p[1]),d3.max(pts,p=>p[0]),d3.max(pts,p=>p[1])];
-  const left=innerWidth>900?480:20, right=60, top=40, bottom=90, aw=W-left-right, ah=H-top-bottom;
-  let k=Math.min(aw/Math.max(x1-x0,80),ah/Math.max(y1-y0,60))*.85;k=Math.max(1,Math.min(k,12));
-  svg.transition().duration(900).call(zoom.transform,d3.zoomIdentity.translate(left+aw/2-k*(x0+x1)/2,top+ah/2-k*(y0+y1)/2).scale(k));
+  $('tip').innerHTML=`<h4>${pname(a.c)}</h4><div class="tp">${fmtP(a.p)} <small>${t('perkg')}</small></div><table><tr><td>${t('value')}</td><td>${t('vfmt')(a.v)}</td></tr><tr><td>${t('qty')}</td><td>${t('vfmt')(a.kg)}</td></tr></table>`;
+  placeTip(e);
 }
 
 /* ---------- map ---------- */
-let svg,gRoot,gLand,gArcs,gDots,proj,path,zoom,W=1200,H=800,K=1;
+let svg,gRoot,gLand,gArcs,gDots,proj,path,zoom,W=900,H=520,K=1;
 function initMap(){
-  svg=d3.select('#map');W=innerWidth;H=innerHeight;
+  svg=d3.select('#map');const box=$('mapbox');W=box.clientWidth||900;H=box.clientHeight||520;
   svg.attr('viewBox',`0 0 ${W} ${H}`);
-  proj=d3.geoNaturalEarth1().fitExtent([[20,20],[W-20,H-20]],{type:'Sphere'});path=d3.geoPath(proj);
+  proj=d3.geoNaturalEarth1().fitExtent([[10,10],[W-10,H-10]],{type:'Sphere'});path=d3.geoPath(proj);
   gRoot=svg.append('g');gLand=gRoot.append('g');gArcs=gRoot.append('g');gDots=gRoot.append('g');
   gLand.selectAll('path').data(WORLD.features).join('path').attr('class','country').attr('d',path)
     .on('mousemove',(e,d)=>{const a=d.__a;if(a)showTip(e,a);else hideTip()}).on('mouseleave',hideTip)
@@ -626,16 +574,17 @@ function initMap(){
   const [hx,hy]=proj(YEREVAN);
   gDots.append('circle').attr('class','homepulse').attr('cx',hx).attr('cy',hy).attr('r',6);
   gDots.append('circle').attr('class','home').attr('cx',hx).attr('cy',hy).attr('r',4);
-  zoom=d3.zoom().scaleExtent([1,40]).on('zoom',e=>{gRoot.attr('transform',e.transform);K=e.transform.k;scaleDots()});
-  svg.call(zoom).on('dblclick.zoom',null);
+  zoom=d3.zoom().scaleExtent([1,40]).filter(e=>e.type==='wheel'?(e.ctrlKey||e.metaKey||document.activeElement===svg.node()):!e.button).on('zoom',e=>{gRoot.attr('transform',e.transform);K=e.transform.k;scaleDots()});
+  svg.attr('tabindex',0).call(zoom).on('dblclick.zoom',null);
   $('zin').onclick=()=>svg.transition().duration(350).call(zoom.scaleBy,1.6);
   $('zout').onclick=()=>svg.transition().duration(350).call(zoom.scaleBy,1/1.6);
-  $('zfit').onclick=()=>fitView(true);
+  $('zfit').onclick=()=>mode==='cmp'?render(true):fitView(true);
 }
+function resizeMap(){const box=$('mapbox');if(!svg||(box.clientWidth===W&&box.clientHeight===H))return;svg.selectAll('*').remove();initMap()}
 function scaleDots(){gDots.selectAll('.dot').attr('r',d=>d.r/K);gDots.select('.home').attr('r',4.5/K);gDots.select('.homepulse').attr('r',10/K)}
 function drawMap(fit){
   const [hx,hy]=proj(YEREVAN);
-  gLand.selectAll('path').classed('dest',false).each(d=>{d.__r=null}).on('mousemove',(e,d)=>{const a=d.__a;if(a)showTip(e,a);else hideTip()});
+  gLand.selectAll('path').classed('dest',false).each(d=>{d.__r=null}).on('mousemove',(e,d)=>{const a=d.__a;if(a)showTip(e,a);else hideTip()}).on('click',(e,d)=>{if(d.__a)toggle(d.__a.c)});
   gArcs.selectAll('path.arc').style('stroke',null).style('stroke-opacity',null);
   const parts=R.parts.filter(a=>PART.get(a.c)&&PART.get(a.c).lat!=null);
   const byNum=new Map();parts.forEach(a=>{const n=PART.get(a.c).n;if(n)byNum.set(n,a)});
@@ -656,7 +605,7 @@ function drawMap(fit){
   gDots.selectAll('circle.dot').data(vis.map(a=>{const p=PART.get(a.c);const [x,y]=proj([p.lon,p.lat]);return {x,y,r:rr(a.v)}}))
     .join('circle').attr('class','dot').attr('cx',d=>d.x).attr('cy',d=>d.y);
   gDots.select('.homepulse').raise();gDots.select('.home').raise();scaleDots();
-  $('empty').style.display=vis.length?'none':'block';$('empty').textContent=t('nodata');
+  $('empty').style.display=vis.length?'none':'flex';$('empty').textContent=t('nodata');
   $('legend').innerHTML=`<div><div>${t('price')}</div><div class="ramp" style="background:linear-gradient(90deg,${css('--ramp0')},${css('--ramp1')})"></div><div class="ends"><span>${fmtP(lo)}</span><span>${fmtP(hi_)}</span></div></div>
     <div><div>${t('width')}</div><svg width="90" height="16"><line x1="2" x2="28" y1="12" y2="12" stroke-width="1"/><line x1="34" x2="60" y1="10" y2="10" stroke-width="4"/><line x1="66" x2="88" y1="9" y2="9" stroke-width="8"/></svg></div>`;
   if(fit)fitView(true);
@@ -664,27 +613,27 @@ function drawMap(fit){
 function fitView(anim){
   const vis=R.parts.filter(a=>!excluded.has(a.c)&&PART.get(a.c)&&PART.get(a.c).lat!=null);
   let cum=0;const sum=d3.sum(vis,a=>a.v)||1;const core=vis.filter((a,i)=>{const take=i<4||cum/sum<.9;cum+=a.v;return take});
-  const pts=[YEREVAN,...core.map(a=>[PART.get(a.c).lon,PART.get(a.c).lat])].map(p=>proj(p));
+  fitPts([YEREVAN,...core.map(a=>[PART.get(a.c).lon,PART.get(a.c).lat])].map(p=>proj(p)),anim);
+}
+function fitPts(pts,anim){
   const [x0,y0,x1,y1]=[d3.min(pts,p=>p[0]),d3.min(pts,p=>p[1]),d3.max(pts,p=>p[0]),d3.max(pts,p=>p[1])];
-  const left=innerWidth>900?480:20, right=innerWidth>900?60:20, top=40, bottom=tsOpen?350:90;
-  const aw=W-left-right, ah=H-top-bottom;
+  const pad=30, aw=W-2*pad, ah=H-2*pad-30;
   let k=Math.min(aw/Math.max(x1-x0,80),ah/Math.max(y1-y0,60))*.85;k=Math.max(1,Math.min(k,12));
-  const cx=left+aw/2, cy=top+ah/2;
-  const tr=d3.zoomIdentity.translate(cx-k*(x0+x1)/2,cy-k*(y0+y1)/2).scale(k);
-  (anim?svg.transition().duration(900):svg).call(zoom.transform,tr);
+  const tr=d3.zoomIdentity.translate(pad+aw/2-k*(x0+x1)/2,pad+ah/2-k*(y0+y1)/2).scale(k);
+  (anim?svg.transition().duration(800):svg).call(zoom.transform,tr);
 }
 function showTip(e,a){
-  const tip=$('tip'), off=excluded.has(a.c);
+  const off=excluded.has(a.c);
   const unit=R.unit&&T[L].units[R.unit]?T[L].units[R.unit]:R.unit;
-  tip.innerHTML=`<h4>${pname(a.c)}</h4>${a.pkg?`<div class="tp">${fmtP(a.pkg)} <small>${t('perkg')}</small></div>`:`<div>${t('noprice')}</div>`}
+  $('tip').innerHTML=`<h4>${pname(a.c)}</h4>${a.pkg?`<div class="tp">${fmtP(a.pkg)} <small>${t('perkg')}</small></div>`:`<div>${t('noprice')}</div>`}
    <table>${a.pq?`<tr><td>${t('perunit')(unit)}</td><td>${fmtP(a.pq)}</td></tr>`:''}<tr><td>${t('value')}</td><td>${t('vfmt')(a.v)}</td></tr><tr><td>${t('qty')}</td><td>${t('vfmt')(a.kg)}</td></tr>
    <tr><td>${t('share')}</td><td>${off?'–':(100*a.v/(R.tot.v||1)).toFixed(1)+'%'}</td></tr><tr><td>${t('months')}</td><td>${a.ms.size}</td></tr></table>
    <div class="act">${off?t('click_on'):t('click_off')}</div>`;
-  let x=e.clientX+16,y=e.clientY+16;if(x+240>innerWidth)x-=260;if(y+200>innerHeight)y-=210;
-  tip.style.left=x+'px';tip.style.top=y+'px';tip.style.opacity=1;
+  placeTip(e);
 }
+function placeTip(e){const tip=$('tip');let x=e.clientX+16,y=e.clientY+16;if(x+250>innerWidth)x-=270;if(y+210>innerHeight)y-=220;tip.style.left=x+'px';tip.style.top=y+'px';tip.style.opacity=1}
 function hideTip(){$('tip').style.opacity=0}
-let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{svg.selectAll('*').remove();initMap();if(R)drawMap(true)},250)});
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{resizeMap();if(rec)render(true)},250)});
 </script>
 </body>
 </html>

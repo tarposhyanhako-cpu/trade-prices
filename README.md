@@ -30,3 +30,4 @@ source("R/fetch.R"); source("R/fetch_compare.R"); source("R/build.R")
 - Price per kg uses net weight. Price per unit uses the product's own unit (litres, pieces…) when Comtrade gives one.
 - Users can remove extreme prices (monthly records more than 3, 5 or 10 times above or below the median) and small shipments.
 - Country names in Armenian: Armstat where available, otherwise Unicode CLDR.
+- Product names in Armenian: the official EAEU HS nomenclature (ԱՏԳ ԱԱ) published by the State Revenue Committee on exim.src.am, saved in `data/ref/hs6_hy.json` (source details in `data/ref/hs6_hy_source.json`). Codes from older HS versions that no longer exist use the name of their 4-digit heading.
